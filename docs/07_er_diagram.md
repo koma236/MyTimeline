@@ -1,0 +1,147 @@
+# 8. ER図
+
+### 8.1 テーブル一覧
+
+| テーブル名 | 説明 |
+|-----------|------|
+| users | ユーザー（アカウント）を管理する |
+| posts | 投稿（ポスト）を管理する |
+| post_images | 投稿に添付された画像（S3キー）を管理する |
+| comments | 投稿へのコメントを管理する |
+| likes | 投稿へのいいねを管理する |
+| follows | ユーザー間のフォロー関係を管理する |
+
+### 8.2 ER図
+
+```
+┌─────────────────────────────┐
+│           users             │
+├─────────────────────────────┤
+│ PK  id            BIGINT    │
+│     username      VARCHAR U │
+│     display_name  VARCHAR   │
+│     email         VARCHAR U │
+│     password_hash VARCHAR   │
+│     bio           VARCHAR   │
+│     created_at    DATETIME  │
+│     updated_at    DATETIME  │
+└──────┬────────┬────────┬────┘
+       │        │        │
+       │        │        │        ┌──────────────────────────┐
+       │        │        └──────< │         follows          │
+       │        │                 ├──────────────────────────┤
+       │        │                 │ PK  id           BIGINT  │
+       │        │        (followee)│ FK  follower_id  BIGINT  │
+       │        └───────────────< │ FK  followee_id  BIGINT  │
+       │                          │     created_at   DATETIME│
+       │                          └──────────────────────────┘
+       │
+       │        ┌──────────────────────────┐
+       ├──────< │          posts           │
+       │        ├──────────────────────────┤       ┌──────────────────────────┐
+       │        │ PK  id          BIGINT   │──┐    │       post_images        │
+       │        │ FK  user_id     BIGINT   │  └──< ├──────────────────────────┤
+       │        │     body        TEXT     │       │ PK  id          BIGINT   │
+       │        │     created_at  DATETIME │       │ FK  post_id     BIGINT   │
+       │        │     updated_at  DATETIME │       │     s3_key      VARCHAR  │
+       │        └───────┬──────────┬───────┘       │     position    INTEGER  │
+       │                │          │               │     created_at  DATETIME │
+       │                │          │               └──────────────────────────┘
+       │      ┌─────────▼──┐    ┌──▼─────────┐
+       │      │  comments  │    │   likes    │
+       │      ├────────────┤    ├────────────┤
+       ├────< │ PK id      │    │ PK id      │ >──┤ (user_id は users を参照)
+       │      │ FK post_id │    │ FK post_id │
+       └────< │ FK user_id │    │ FK user_id │ >──┘
+              │ body       │    │ created_at │
+              │ created_at │    │ UQ(post_id,│
+              │ updated_at │    │    user_id)│
+              └────────────┘    └────────────┘
+   （U = UNIQUE, UQ = 複合UNIQUE）
+```
+
+### 8.3 テーブル定義
+
+#### users テーブル
+
+| カラム名 | 型 | NOT NULL | 説明 |
+|---------|-----|----------|------|
+| id | BIGINT | ○ | 主キー（自動採番） |
+| username | VARCHAR(50) | ○ | ユーザー識別 ID。**UNIQUE**（例: `taro`） |
+| display_name | VARCHAR(100) | ○ | 画面表示名（重複可） |
+| email | VARCHAR(255) | ○ | メールアドレス。**UNIQUE** |
+| password_hash | VARCHAR(255) | ○ | ハッシュ化済みパスワード（平文保存しない） |
+| bio | VARCHAR(300) | - | 自己紹介。未設定は NULL |
+| created_at | DATETIME | ○ | 作成日時 |
+| updated_at | DATETIME | ○ | 更新日時 |
+
+#### posts テーブル
+
+| カラム名 | 型 | NOT NULL | 説明 |
+|---------|-----|----------|------|
+| id | BIGINT | ○ | 主キー（自動採番） |
+| user_id | BIGINT | ○ | 外部キー（users.id）。投稿者 |
+| body | TEXT | ○ | 投稿本文（上限文字数はアプリ側で制御。例: 280 文字） |
+| created_at | DATETIME | ○ | 作成日時 |
+| updated_at | DATETIME | ○ | 更新日時 |
+
+#### post_images テーブル
+
+| カラム名 | 型 | NOT NULL | 説明 |
+|---------|-----|----------|------|
+| id | BIGINT | ○ | 主キー（自動採番） |
+| post_id | BIGINT | ○ | 外部キー（posts.id） |
+| s3_key | VARCHAR(512) | ○ | S3 オブジェクトキー。画像本体は S3 に保存 |
+| position | INTEGER | ○ | 投稿内での表示順（0〜3） |
+| created_at | DATETIME | ○ | 作成日時 |
+
+#### comments テーブル
+
+| カラム名 | 型 | NOT NULL | 説明 |
+|---------|-----|----------|------|
+| id | BIGINT | ○ | 主キー（自動採番） |
+| post_id | BIGINT | ○ | 外部キー（posts.id）。対象の投稿 |
+| user_id | BIGINT | ○ | 外部キー（users.id）。コメント投稿者 |
+| body | VARCHAR(500) | ○ | コメント本文 |
+| created_at | DATETIME | ○ | 作成日時 |
+| updated_at | DATETIME | ○ | 更新日時 |
+
+#### likes テーブル
+
+| カラム名 | 型 | NOT NULL | 説明 |
+|---------|-----|----------|------|
+| id | BIGINT | ○ | 主キー（自動採番） |
+| post_id | BIGINT | ○ | 外部キー（posts.id）。いいね対象の投稿 |
+| user_id | BIGINT | ○ | 外部キー（users.id）。いいねしたユーザー |
+| created_at | DATETIME | ○ | 作成日時 |
+
+#### follows テーブル
+
+| カラム名 | 型 | NOT NULL | 説明 |
+|---------|-----|----------|------|
+| id | BIGINT | ○ | 主キー（自動採番） |
+| follower_id | BIGINT | ○ | 外部キー（users.id）。フォローする側 |
+| followee_id | BIGINT | ○ | 外部キー（users.id）。フォローされる側 |
+| created_at | DATETIME | ○ | 作成日時 |
+
+### 8.4 制約
+
+- **外部キー制約:**
+  - `posts.user_id` → `users.id`
+  - `post_images.post_id` → `posts.id`
+  - `comments.post_id` → `posts.id` / `comments.user_id` → `users.id`
+  - `likes.post_id` → `posts.id` / `likes.user_id` → `users.id`
+  - `follows.follower_id` → `users.id` / `follows.followee_id` → `users.id`
+- **UNIQUE 制約:**
+  - `users.username`、`users.email` は一意
+  - `likes(post_id, user_id)` は複合 UNIQUE（同一ユーザーの二重いいねを防止）
+  - `follows(follower_id, followee_id)` は複合 UNIQUE（二重フォローを防止）
+- **チェック制約:**
+  - `follows.follower_id <> followee_id`（自分自身はフォロー不可）
+- **カスケード削除:**
+  - 投稿削除時、配下の `post_images` / `comments` / `likes` を削除する
+  - ユーザー削除時、配下の `posts`（およびその配下）・`comments` / `likes` / `follows`（follower・followee 両方向）を削除する
+- **集計方針:**
+  - いいね数・コメント数・フォロー中数・フォロワー数は、対応テーブルの `COUNT` で取得する（初期フェーズでは非正規化カウンタを持たない）
+- **画像の扱い:**
+  - 画像本体は AWS S3 に保存し、DB には `post_images.s3_key` のみ保持する
