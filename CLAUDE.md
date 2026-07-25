@@ -83,6 +83,17 @@ PR 本文の `Closes #` 欄に Issue 番号を必ず記入すること。
 gh pr merge <PR番号> --squash --delete-branch
 ```
 
+`--delete-branch` で削除されるのは**リモートブランチのみ**。マージ後は `main` に戻して最新化し、**マージ済みのローカルブランチも必ず削除すること**。
+
+```bash
+git checkout main
+git pull --prune            # 最新を取り込み、消えたリモート追跡ブランチも整理
+git branch -d <ブランチ名>   # マージ済みローカルブランチを削除
+```
+
+- `git branch --merged main` でマージ済みのローカルブランチを一覧できる（`main` は削除しないこと）
+- ローカルにマージ済みブランチを溜めないこと
+
 ---
 
 ## ブランチ保護ルール（GitHub 側で設定済み）
