@@ -22,6 +22,7 @@ Claude Code はセッション開始時にこのファイルを自動的に読�
 2. **ブランチ必須** — Issue ごとに専用ブランチを切ること
 3. **main への直接プッシュ禁止** — すべての変更は Pull Request を通じてマージすること
 4. **PR は Issue を参照すること** — PR 本文に `Closes #N` を必ず含めること
+5. **Claude Code はマージしてはならない** — 作業範囲は **PR の作成まで**。`gh pr merge` を実行せず、PR の URL を報告して作業を終えること。内容の確認とマージは人間が手動で行う
 
 ---
 
@@ -66,18 +67,26 @@ git add <ファイル名>
 git commit -m "feat: 投稿APIを追加 (#5)"
 ```
 
-### Step 4: Pull Request を作成する
+### Step 4: Pull Request を作成する（Claude Code の作業はここまで）
 
 ```bash
 gh pr create \
   --title "変更内容の要約 (#N)" \
-  --body "$(cat .github/PULL_REQUEST_TEMPLATE.md)" \
-  --base main
+  --base main \
+  --body "..."   # Closes #N を必ず含める
 ```
 
 PR 本文の `Closes #` 欄に Issue 番号を必ず記入すること。
 
-### Step 5: マージする
+> `.github/PULL_REQUEST_TEMPLATE.md` は現状リポジトリに存在しない。テンプレートを整備するまでは本文を直接記述すること。
+
+**PR を作成したら、その URL を報告して作業を終えること。**
+
+### Step 5: マージする（人間が手動で行う）
+
+**Claude Code は `gh pr merge` を実行してはならない。** PR の内容を確認し、マージするかどうかを判断するのは人間の役割である。
+
+以下は人間側の手順。
 
 ```bash
 gh pr merge <PR番号> --squash --delete-branch
@@ -93,6 +102,7 @@ git branch -d <ブランチ名>   # マージ済みローカルブランチを�
 
 - `git branch --merged main` でマージ済みのローカルブランチを一覧できる（`main` は削除しないこと）
 - ローカルにマージ済みブランチを溜めないこと
+- Claude Code にブランチ整理を依頼する場合は、**マージ済みであることを確認したうえで明示的に指示すること**
 
 ---
 
@@ -113,6 +123,8 @@ git branch -d <ブランチ名>   # マージ済みローカルブランチを�
 | Issue なしで作業を始めた | 今すぐ Issue を作成し、ブランチを切り直す |
 | main で作業してしまった | `git stash` → ブランチ作成 → `git stash pop` |
 | PR に `Closes #N` がない | PR 本文を編集して追加する |
+| Claude Code がマージしてしまった | マージは人間の役割。PR 作成時点で必ず止まること（Step 4・Step 5 参照） |
+| ラベルが存在せず `gh issue create` が失敗する | `gh label list` で確認し、必要なら `gh label create <名前>` で作成してから再実行する |
 
 ---
 
