@@ -89,8 +89,10 @@ PR 本文の `Closes #` 欄に Issue 番号を必ず記入すること。
 以下は人間側の手順。
 
 ```bash
-gh pr merge <PR番号> --squash --delete-branch
+gh pr merge <PR番号> --merge --delete-branch
 ```
+
+**マージ方式は通常マージ（`--merge`）を使うこと。** `--squash` はブランチのコミットを新しい別コミットに作り直すため、元のコミットが `main` の履歴に含まれず、下記の `git branch --merged` / `git branch -d` が機能しなくなる（`-D` での強制削除が必要になり、未マージブランチの誤削除につながる）。
 
 `--delete-branch` で削除されるのは**リモートブランチのみ**。マージ後は `main` に戻して最新化し、**マージ済みのローカルブランチも必ず削除すること**。
 
@@ -125,6 +127,7 @@ git branch -d <ブランチ名>   # マージ済みローカルブランチを�
 | PR に `Closes #N` がない | PR 本文を編集して追加する |
 | Claude Code がマージしてしまった | マージは人間の役割。PR 作成時点で必ず止まること（Step 4・Step 5 参照） |
 | ラベルが存在せず `gh issue create` が失敗する | `gh label list` で確認し、必要なら `gh label create <名前>` で作成してから再実行する |
+| `git branch -d` が「not fully merged」で失敗する | squash マージした PR が原因。`git diff main <ブランチ名>` が空であることを確認してから `-D` で削除する。以降は `--merge` でマージすること |
 
 ---
 
