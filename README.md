@@ -26,7 +26,7 @@ X（旧 Twitter）風のタイムライン型 SNS アプリ。テキストと画
 | レイヤー | 主な技術 |
 |---------|---------|
 | フロントエンド | React 19 + TypeScript 6 + Vite 8 + Tailwind CSS 3 + TanStack Query |
-| バックエンド | Java 25 + Spring Boot 4.0 + Spring Data JPA + Flyway + Spring Security |
+| バックエンド | Java 25 + Spring Boot 4.0 + MyBatis + Flyway + Spring Security（JWT 認証） |
 | データベース | PostgreSQL 15（ローカル）/ PostgreSQL 16（RDS, 本番想定） |
 | 画像ストレージ | AWS S3 |
 | ローカル実行 | Docker + Docker Compose |
@@ -40,14 +40,16 @@ X（旧 Twitter）風のタイムライン型 SNS アプリ。テキストと画
 
 ```
 MyTimeline/
-├── backend/                  # Spring Boot アプリケーション（実装予定）
+├── backend/                  # Spring Boot アプリケーション
 │   ├── src/main/java/
 │   │   └── com/example/mytimeline/
+│   │       ├── config/       # Spring Security 設定など
 │   │       ├── controller/   # REST コントローラー
 │   │       ├── service/      # ビジネスロジック
-│   │       ├── repository/   # Spring Data JPA リポジトリ
-│   │       ├── entity/       # JPA エンティティ（User/Post/PostImage/Comment/Like/Follow）
-│   │       ├── security/     # Spring Security（認証・認可）
+│   │       ├── mapper/       # MyBatis Mapper（SQL）
+│   │       ├── model/        # テーブルに対応するモデル（User/Post/PostImage/Comment/Like/Follow）
+│   │       ├── security/     # 認証・認可（JWT）
+│   │       ├── exception/    # 例外と共通エラーハンドリング
 │   │       └── dto/          # リクエスト / レスポンス DTO
 │   └── src/main/resources/
 │       └── db/migration/     # Flyway マイグレーションスクリプト

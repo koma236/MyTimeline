@@ -1,0 +1,150 @@
+package com.example.mytimeline.service;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import com.example.mytimeline.dto.AuthResponse;
+import com.example.mytimeline.dto.LoginRequest;
+import com.example.mytimeline.dto.SignupRequest;
+import com.example.mytimeline.exception.DuplicateFieldException;
+import com.example.mytimeline.exception.InvalidCredentialsException;
+import com.example.mytimeline.mapper.UserMapper;
+import com.example.mytimeline.model.User;
+import com.example.mytimeline.security.JwtProperties;
+import com.example.mytimeline.security.JwtService;
+import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+@ExtendWith(MockitoExtension.class)
+class AuthServiceTest {
+
+    private static final String RAW_PASSWORD = "password123";
+
+    @Mock
+    private UserMapper userMapper;
+
+    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+
+    private AuthService authService;
+
+    @BeforeEach
+    void setUp() {
+        JwtService jwtService = new JwtService(
+            new JwtProperties("test-secret-key-for-unit-test-at-least-32-bytes", 60)
+        );
+        authService = new AuthService(userMapper, passwordEncoder, jwtService);
+    }
+
+    private SignupRequest signupRequest() {
+        return new SignupRequest("taro", "山田太郎", "taro@example.com", RAW_PASSWORD);
+    }
+
+    private User existingUser() {
+        User user = new User();
+        user.setId(1L);
+        user.setUsername("taro");
+        user.setDisplayName("山田太郎");
+        user.setEmail("taro@example.com");
+        user.setPasswordHash(passwordEncoder.encode(RAW_PASSWORD));
+        return user;
+    }
+
+    @Test
+    @DisplayName("登録時はパスワードをハッシュ化して保存し、平文は保存しない")
+    void signupStoresHashedPassword() {
+        when(userMapper.findByUsername("taro")).thenReturn(Optional.empty());
+        when(userMapper.findByEmail("taro@example.com")).thenReturn(Optional.empty());
+        when(userMapper.findById(any())).thenReturn(Optional.of(existingUser()));
+
+        AuthResponse response = authService.signup(signupRequest());
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userMapper).insert(captor.capture());
+        String storedHash = captor.getValue().getPasswordHash();
+
+        assertThat(storedHash).isNotEqualTo(RAW_PASSWORD);
+        assertThat(passwordEncoder.matches(RAW_PASSWORD, storedHash)).isTrue();
+        assertThat(response.token()).isNotBlank();
+        assertThat(response.user().username()).isEqualTo("taro");
+    }
+
+    @Test
+    @DisplayName("ユーザー名が重複していれば username を指す例外を投げ、INSERT しない")
+    void signupRejectsDuplicateUsername() {
+        when(userMapper.findByUsername("taro")).thenReturn(Optional.of(existingUser()));
+
+        assertThatThrownBy(() -> authService.signup(signupRequest()))
+            .isInstanceOf(DuplicateFieldException.class)
+            .satisfies(e -> assertThat(((DuplicateFieldException) e).getField()).isEqualTo("username"));
+
+        verify(userMapper, never()).insert(any());
+    }
+
+    @Test
+    @DisplayName("メールアドレスが重複していれば email を指す例外を投げ、INSERT しない")
+    void signupRejectsDuplicateEmail() {
+        when(userMapper.findByUsername("taro")).thenReturn(Optional.empty());
+        when(userMapper.findByEmail("taro@example.com")).thenReturn(Optional.of(existingUser()));
+
+        assertThatThrownBy(() -> authService.signup(signupRequest()))
+            .isInstanceOf(DuplicateFieldException.class)
+            .satisfies(e -> assertThat(((DuplicateFieldException) e).getField()).isEqualTo("email"));
+
+        verify(userMapper, never()).insert(any());
+    }
+
+    @Test
+    @DisplayName("メールアドレスでログインできる")
+    void loginWithEmail() {
+        when(userMapper.findByEmail("taro@example.com")).thenReturn(Optional.of(existingUser()));
+
+        AuthResponse response = authService.login(new LoginRequest("taro@example.com", RAW_PASSWORD));
+
+        assertThat(response.token()).isNotBlank();
+        assertThat(response.user().email()).isEqualTo("taro@example.com");
+    }
+
+    @Test
+    @DisplayName("ユーザー名でもログインできる")
+    void loginWithUsername() {
+        when(userMapper.findByEmail("taro")).thenReturn(Optional.empty());
+        when(userMapper.findByUsername("taro")).thenReturn(Optional.of(existingUser()));
+
+        AuthResponse response = authService.login(new LoginRequest("taro", RAW_PASSWORD));
+
+        assertThat(response.user().username()).isEqualTo("taro");
+    }
+
+    @Test
+    @DisplayName("パスワードが違えば認証失敗")
+    void loginRejectsWrongPassword() {
+        when(userMapper.findByEmail("taro@example.com")).thenReturn(Optional.of(existingUser()));
+
+        assertThatThrownBy(() -> authService.login(new LoginRequest("taro@example.com", "wrongpassword")))
+            .isInstanceOf(InvalidCredentialsException.class)
+            .hasMessage(InvalidCredentialsException.MESSAGE);
+    }
+
+    @Test
+    @DisplayName("ユーザーが存在しない場合もパスワード誤りと同じ例外・同じメッセージになる")
+    void loginDoesNotRevealWhetherUserExists() {
+        when(userMapper.findByEmail("nobody@example.com")).thenReturn(Optional.empty());
+        when(userMapper.findByUsername("nobody@example.com")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.login(new LoginRequest("nobody@example.com", RAW_PASSWORD)))
+            .isInstanceOf(InvalidCredentialsException.class)
+            .hasMessage(InvalidCredentialsException.MESSAGE);
+    }
+}

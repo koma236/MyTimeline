@@ -15,7 +15,7 @@
 
 | ID | 項目 | 内容 | ステータス |
 |----|------|------|-----------|
-| TBD-01 | 認証方式の詳細 | Spring Security ベース。トークン（JWT）方式かセッション方式かは実装時に決定 | 未決 |
+| TBD-01 | 認証方式の詳細 | **JWT（HS256）方式に決定。** Spring Security をステートレス構成にし、`Authorization: Bearer <token>` で認証する。詳細は [F01_auth.md](features/F01_auth.md) | 決定済み |
 | TBD-02 | AWS サーバ構築の可否 | サーバ（EC2/RDS/ALB）を実際に構築するかは未確定。構築時は [09_infrastructure.md](09_infrastructure.md) の構成を前提とする | 未決 |
 | TBD-03 | IaC / デプロイ手順 | Terraform 等の IaC・詳細なデプロイ手順書は今回のドキュメント対象外。今後検討 | 未決 |
 | TBD-04 | 投稿本文の上限文字数 | 暫定 280 文字。正式値は機能定義書で確定する | 未決 |
