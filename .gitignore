@@ -1,2 +1,13 @@
 .claude/
 .DS_Store
+
+# 環境変数（機密情報を含むためコミットしない）
+.env
+
+# バックエンド
+backend/build/
+backend/.gradle/
+
+# フロントエンド
+frontend/node_modules/
+frontend/dist/

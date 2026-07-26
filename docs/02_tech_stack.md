@@ -20,9 +20,9 @@
 | 言語 | Java | 25 |
 | フレームワーク | Spring Boot | 4.0.6 |
 | 依存関係管理 | io.spring.dependency-management | 1.1.7 |
-| ORM | Spring Data JPA + Hibernate | (Spring Boot 管理) |
+| DB アクセス | MyBatis (mybatis-spring-boot-starter) | 4.0.1 |
 | DBマイグレーション | Flyway | (Spring Boot 管理) |
-| 認証・認可 | Spring Security | (Spring Boot 管理) |
+| 認証・認可 | Spring Security + JWT (jjwt) | Spring Boot 管理 / jjwt 0.12.6 |
 | バリデーション | Bean Validation (jakarta.validation) | (Spring Boot 管理) |
 | ビルドツール | Gradle | 8.x |
 
