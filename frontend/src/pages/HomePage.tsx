@@ -1,67 +1,88 @@
-import { useEffect, useState } from 'react'
-import * as authApi from '../api/auth'
-import { useAuth } from '../auth/useAuth'
-
-type MeStatus = 'checking' | 'ok' | 'failed'
+import { useCallback, useState } from 'react'
+import * as postsApi from '../api/posts'
+import { FormError } from '../components/FormError'
+import { InfiniteScrollSentinel } from '../components/InfiniteScrollSentinel'
+import { PostCard } from '../components/PostCard'
+import { PostComposer } from '../components/PostComposer'
+import { TimelineTabs } from '../components/TimelineTabs'
+import { useTimeline } from '../hooks/useTimeline'
+import type { TimelineTab } from '../types/post'
 
 /**
- * ログイン後のホーム画面（`/`）。
+ * タイムライン画面（SCR-03・F02）。ログイン後のメイン画面。
  *
- * タイムライン（SCR-03）は F02 で実装する。ここではログインできたことと、
- * アクセストークンが実際に保護 API へ通っていることが分かれば十分。
+ * 投稿の作成・編集・削除はこの画面で完結する。サーバーへの反映が成功したら
+ * 手元のリストも同じように直し、タイムライン全体を取り直さない
+ * （読んでいる位置が飛ぶうえ、無限スクロールで読んだ分まで消えてしまうため）。
  */
 export function HomePage() {
-  const { user } = useAuth()
-  const [meStatus, setMeStatus] = useState<MeStatus>('checking')
+  const [tab, setTab] = useState<TimelineTab>('following')
+  const {
+    posts,
+    loading,
+    error,
+    hasMore,
+    loadMore,
+    retry,
+    prependPost,
+    replacePost,
+    removePost,
+  } = useTimeline(tab)
 
-  // 保護 API を 1 本叩き、Authorization ヘッダが通ることを確かめる。
-  // アクセストークンが切れていれば裏で自動リフレッシュが走る
-  useEffect(() => {
-    let cancelled = false
-    authApi
-      .fetchMe()
-      .then(() => !cancelled && setMeStatus('ok'))
-      .catch(() => !cancelled && setMeStatus('failed'))
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  const handleUpdate = useCallback(
+    async (id: number, body: string) => {
+      const updated = await postsApi.updatePost(id, { body })
+      replacePost(updated)
+      return updated
+    },
+    [replacePost],
+  )
 
-  if (!user) return null
+  const handleDelete = useCallback(
+    async (id: number) => {
+      await postsApi.deletePost(id)
+      removePost(id)
+    },
+    [removePost],
+  )
+
+  const isEmpty = posts.length === 0 && !loading && !error
 
   return (
-    <div className="mx-auto max-w-column px-6 py-12">
-      <p className="mb-2 text-sm font-bold text-accent">✓ ログイン成功</p>
-      <h1 className="mb-6 text-2xl font-extrabold">
-        {user.displayName} さんとしてログインしています
-      </h1>
+    <>
+      <TimelineTabs active={tab} onChange={setTab} />
 
-      <dl className="mb-8 divide-y divide-border rounded-lg border border-border">
-        <div className="flex justify-between px-4 py-3">
-          <dt className="text-sm text-muted">ユーザー名</dt>
-          <dd className="text-sm font-bold">@{user.username}</dd>
-        </div>
-        <div className="flex justify-between px-4 py-3">
-          <dt className="text-sm text-muted">メールアドレス</dt>
-          <dd className="text-sm">{user.email}</dd>
-        </div>
-        <div className="flex justify-between px-4 py-3">
-          <dt className="text-sm text-muted">登録日時</dt>
-          <dd className="text-sm">{new Date(user.createdAt).toLocaleString('ja-JP')}</dd>
-        </div>
-        <div className="flex justify-between px-4 py-3">
-          <dt className="text-sm text-muted">保護 API（GET /api/auth/me）</dt>
-          <dd className="text-sm font-bold">
-            {meStatus === 'checking' && <span className="text-muted">確認中…</span>}
-            {meStatus === 'ok' && <span className="text-accent">アクセストークン有効</span>}
-            {meStatus === 'failed' && <span className="text-danger">失敗</span>}
-          </dd>
-        </div>
-      </dl>
+      <PostComposer onSubmit={(body) => postsApi.createPost({ body })} onCreated={prependPost} />
 
-      <p className="text-sm text-muted">
-        タイムライン機能（投稿・いいね・コメント・フォロー）は今後実装予定です。
-      </p>
-    </div>
+      {error && (
+        <div className="px-4 py-6">
+          <FormError message={error} />
+          <button
+            type="button"
+            onClick={retry}
+            className="rounded-full border border-border-strong px-4 py-1.5 text-sm font-bold transition-colors hover:bg-bg-subtle"
+          >
+            再読み込み
+          </button>
+        </div>
+      )}
+
+      {isEmpty && (
+        <p className="px-4 py-16 text-center text-sm text-muted">
+          {tab === 'following'
+            ? 'まだ投稿がありません。最初の投稿をしてみましょう。'
+            : 'まだ誰も投稿していません。'}
+        </p>
+      )}
+
+      {posts.map((post) => (
+        <PostCard key={post.id} post={post} onUpdate={handleUpdate} onDelete={handleDelete} />
+      ))}
+
+      {/* 続きがあるときだけ番兵を置く。末尾に達したら何も出さずに終わる */}
+      {hasMore && !error && <InfiniteScrollSentinel onVisible={loadMore} />}
+
+      {loading && <p className="py-6 text-center text-sm text-muted">読み込み中…</p>}
+    </>
   )
 }

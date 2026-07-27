@@ -1,0 +1,34 @@
+/**
+ * 投稿・タイムライン API の型定義。バックエンドの DTO
+ * (backend/src/main/java/com/example/mytimeline/dto) と 1:1 で対応させる。
+ */
+
+/** 投稿に埋め込まれる投稿者。UserResponse と違いメールアドレスを含まない */
+export interface PostAuthor {
+  id: number
+  username: string
+  displayName: string
+}
+
+export interface PostResponse {
+  id: number
+  body: string
+  author: PostAuthor
+  /** LocalDateTime のためタイムゾーンを持たない ISO 文字列 */
+  createdAt: string
+  updatedAt: string
+}
+
+/** 投稿の作成・編集で送る内容。どちらも本文だけなので共用する */
+export interface PostRequest {
+  body: string
+}
+
+export interface TimelineResponse {
+  posts: PostResponse[]
+  /** 次ページのカーソル。以降が無ければ null（@JsonInclude ではないので必ずキーは存在する） */
+  nextCursor: number | null
+}
+
+/** タイムラインのタブ。API のパス（/api/timeline/{tab}）と一致させている */
+export type TimelineTab = 'following' | 'all'
