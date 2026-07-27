@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.mytimeline.mapper.PostMapper">
+
+    <!--
+      投稿と投稿者をまとめて 1 オブジェクトに詰める。
+      投稿ごとにユーザーを引き直す N+1 を避けるため、association は
+      別クエリ（select 属性）ではなく JOIN 済みの列から組み立てている。
+      users の列は別名を付けて posts の同名列（id / created_at）との衝突を避ける。
+    -->
+    <resultMap id="PostWithAuthor" type="com.example.mytimeline.model.Post">
+        <id     property="id"        column="id"/>
+        <result property="userId"    column="user_id"/>
+        <result property="body"      column="body"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <association property="author" javaType="com.example.mytimeline.model.User">
+            <id     property="id"          column="author_id"/>
+            <result property="username"    column="author_username"/>
+            <result property="displayName" column="author_display_name"/>
+            <result property="bio"         column="author_bio"/>
+            <result property="createdAt"   column="author_created_at"/>
+        </association>
+    </resultMap>
+
+    <!--
+      投稿取得はどこでも投稿者名を必要とするため、この JOIN を共通化している。
+      password_hash / email は画面に出さないので取得しない。
+    -->
+    <sql id="selectPostWithAuthor">
+        SELECT
+            p.id,
+            p.user_id,
+            p.body,
+            p.created_at,
+            p.updated_at,
+            u.id           AS author_id,
+            u.username     AS author_username,
+            u.display_name AS author_display_name,
+            u.bio          AS author_bio,
+            u.created_at   AS author_created_at
+        FROM posts p
+        JOIN users u ON u.id = p.user_id
+    </sql>
+
+    <insert id="insert" parameterType="com.example.mytimeline.model.Post"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO posts (user_id, body)
+        VALUES (#{userId}, #{body})
+    </insert>
+
+    <select id="findById" resultMap="PostWithAuthor">
+        <include refid="selectPostWithAuthor"/>
+        WHERE p.id = #{id}
+    </select>
+
+    <!--
+      新しい順の並びは id の降順で表現する。id は BIGSERIAL で単調増加するため
+      created_at の降順と一致し、同時刻の投稿でも順序が一意に定まる。
+      カーソルも同じ理由で「最後に見た投稿の id」をそのまま使える。
+    -->
+    <select id="findTimeline" resultMap="PostWithAuthor">
+        <include refid="selectPostWithAuthor"/>
+        <where>
+            <!-- userIds が null なら絞り込まない（全体タイムライン）。
+                 空リストは「対象ユーザーが 0 人」なので 0 件を返す -->
+            <if test="userIds != null">
+                <choose>
+                    <when test="userIds.isEmpty()">
+                        AND 1 = 0
+                    </when>
+                    <otherwise>
+                        AND p.user_id IN
+                        <foreach item="userId" collection="userIds" open="(" separator="," close=")">
+                            #{userId}
+                        </foreach>
+                    </otherwise>
+                </choose>
+            </if>
+            <if test="cursor != null">
+                AND p.id &lt; #{cursor}
+            </if>
+        </where>
+        ORDER BY p.id DESC
+        LIMIT #{limit}
+    </select>
+
+    <update id="updateBody">
+        UPDATE posts
+        SET body = #{body},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM posts WHERE id = #{id}
+    </delete>
+
+</mapper>
