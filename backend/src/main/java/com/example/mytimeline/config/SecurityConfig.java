@@ -49,7 +49,11 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                // refresh / logout はアクセストークンではなく Cookie のリフレッシュトークンで
+                // 認可するため permitAll。認証必須にすると「アクセストークンが切れているので
+                // 取り直すことも抜けることもできない」状態になる
                 .requestMatchers("/api/auth/signup", "/api/auth/login").permitAll()
+                .requestMatchers("/api/auth/refresh", "/api/auth/logout").permitAll()
                 .requestMatchers("/actuator/health", "/error").permitAll()
                 // 上記以外はすべてログイン必須。機能追加時に個別の permitAll を足さない限り保護される
                 .anyRequest().authenticated()
@@ -92,7 +96,10 @@ public class SecurityConfig {
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         // フロントが Authorization ヘッダでトークンを送れるようにする
         config.setAllowedHeaders(List.of(HttpHeaders.AUTHORIZATION, HttpHeaders.CONTENT_TYPE));
-        config.setAllowCredentials(false);
+        // リフレッシュトークンを httpOnly Cookie で往復させるため必須。
+        // なお setAllowedOrigins("*") は credentials と併用できないが、
+        // setAllowedOriginPatterns はこの用途のために用意されているのでそのまま使える
+        config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", config);

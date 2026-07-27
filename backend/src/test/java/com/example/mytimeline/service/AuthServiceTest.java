@@ -7,11 +7,11 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.example.mytimeline.dto.AuthResponse;
 import com.example.mytimeline.dto.LoginRequest;
 import com.example.mytimeline.dto.SignupRequest;
 import com.example.mytimeline.exception.DuplicateFieldException;
 import com.example.mytimeline.exception.InvalidCredentialsException;
+import com.example.mytimeline.exception.InvalidRefreshTokenException;
 import com.example.mytimeline.mapper.UserMapper;
 import com.example.mytimeline.model.User;
 import com.example.mytimeline.security.JwtProperties;
@@ -31,9 +31,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 class AuthServiceTest {
 
     private static final String RAW_PASSWORD = "password123";
+    private static final String ISSUED_REFRESH_TOKEN = "issued-refresh-token";
 
     @Mock
     private UserMapper userMapper;
+
+    @Mock
+    private RefreshTokenService refreshTokenService;
 
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
@@ -42,9 +46,9 @@ class AuthServiceTest {
     @BeforeEach
     void setUp() {
         JwtService jwtService = new JwtService(
-            new JwtProperties("test-secret-key-for-unit-test-at-least-32-bytes", 60)
+            new JwtProperties("test-secret-key-for-unit-test-at-least-32-bytes", 60, 14, false)
         );
-        authService = new AuthService(userMapper, passwordEncoder, jwtService);
+        authService = new AuthService(userMapper, passwordEncoder, jwtService, refreshTokenService);
     }
 
     private SignupRequest signupRequest() {
@@ -67,8 +71,9 @@ class AuthServiceTest {
         when(userMapper.findByUsername("taro")).thenReturn(Optional.empty());
         when(userMapper.findByEmail("taro@example.com")).thenReturn(Optional.empty());
         when(userMapper.findById(any())).thenReturn(Optional.of(existingUser()));
+        when(refreshTokenService.issue(1L)).thenReturn(ISSUED_REFRESH_TOKEN);
 
-        AuthResponse response = authService.signup(signupRequest());
+        AuthService.AuthResult result = authService.signup(signupRequest());
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         verify(userMapper).insert(captor.capture());
@@ -76,8 +81,23 @@ class AuthServiceTest {
 
         assertThat(storedHash).isNotEqualTo(RAW_PASSWORD);
         assertThat(passwordEncoder.matches(RAW_PASSWORD, storedHash)).isTrue();
-        assertThat(response.token()).isNotBlank();
-        assertThat(response.user().username()).isEqualTo("taro");
+        assertThat(result.response().accessToken()).isNotBlank();
+        assertThat(result.response().user().username()).isEqualTo("taro");
+    }
+
+    @Test
+    @DisplayName("登録時はリフレッシュトークンも発行し、レスポンスボディには含めない")
+    void signupIssuesRefreshTokenOutsideBody() {
+        when(userMapper.findByUsername("taro")).thenReturn(Optional.empty());
+        when(userMapper.findByEmail("taro@example.com")).thenReturn(Optional.empty());
+        when(userMapper.findById(any())).thenReturn(Optional.of(existingUser()));
+        when(refreshTokenService.issue(1L)).thenReturn(ISSUED_REFRESH_TOKEN);
+
+        AuthService.AuthResult result = authService.signup(signupRequest());
+
+        assertThat(result.rawRefreshToken()).isEqualTo(ISSUED_REFRESH_TOKEN);
+        // リフレッシュトークンは Cookie で返すため、ボディのアクセストークンとは別物であること
+        assertThat(result.response().accessToken()).isNotEqualTo(ISSUED_REFRESH_TOKEN);
     }
 
     @Test
@@ -109,11 +129,13 @@ class AuthServiceTest {
     @DisplayName("メールアドレスでログインできる")
     void loginWithEmail() {
         when(userMapper.findByEmail("taro@example.com")).thenReturn(Optional.of(existingUser()));
+        when(refreshTokenService.issue(1L)).thenReturn(ISSUED_REFRESH_TOKEN);
 
-        AuthResponse response = authService.login(new LoginRequest("taro@example.com", RAW_PASSWORD));
+        AuthService.AuthResult result = authService.login(new LoginRequest("taro@example.com", RAW_PASSWORD));
 
-        assertThat(response.token()).isNotBlank();
-        assertThat(response.user().email()).isEqualTo("taro@example.com");
+        assertThat(result.response().accessToken()).isNotBlank();
+        assertThat(result.response().user().email()).isEqualTo("taro@example.com");
+        assertThat(result.rawRefreshToken()).isEqualTo(ISSUED_REFRESH_TOKEN);
     }
 
     @Test
@@ -121,20 +143,23 @@ class AuthServiceTest {
     void loginWithUsername() {
         when(userMapper.findByEmail("taro")).thenReturn(Optional.empty());
         when(userMapper.findByUsername("taro")).thenReturn(Optional.of(existingUser()));
+        when(refreshTokenService.issue(1L)).thenReturn(ISSUED_REFRESH_TOKEN);
 
-        AuthResponse response = authService.login(new LoginRequest("taro", RAW_PASSWORD));
+        AuthService.AuthResult result = authService.login(new LoginRequest("taro", RAW_PASSWORD));
 
-        assertThat(response.user().username()).isEqualTo("taro");
+        assertThat(result.response().user().username()).isEqualTo("taro");
     }
 
     @Test
-    @DisplayName("パスワードが違えば認証失敗")
+    @DisplayName("パスワードが違えば認証失敗し、リフレッシュトークンも発行しない")
     void loginRejectsWrongPassword() {
         when(userMapper.findByEmail("taro@example.com")).thenReturn(Optional.of(existingUser()));
 
         assertThatThrownBy(() -> authService.login(new LoginRequest("taro@example.com", "wrongpassword")))
             .isInstanceOf(InvalidCredentialsException.class)
             .hasMessage(InvalidCredentialsException.MESSAGE);
+
+        verify(refreshTokenService, never()).issue(any());
     }
 
     @Test
@@ -146,5 +171,49 @@ class AuthServiceTest {
         assertThatThrownBy(() -> authService.login(new LoginRequest("nobody@example.com", RAW_PASSWORD)))
             .isInstanceOf(InvalidCredentialsException.class)
             .hasMessage(InvalidCredentialsException.MESSAGE);
+    }
+
+    @Test
+    @DisplayName("リフレッシュすると新しいアクセストークンと新しいリフレッシュトークンを返す")
+    void refreshRotatesBothTokens() {
+        when(refreshTokenService.rotate("old-token"))
+            .thenReturn(new RefreshTokenService.RotationResult(1L, "new-token"));
+        when(userMapper.findById(1L)).thenReturn(Optional.of(existingUser()));
+
+        AuthService.AuthResult result = authService.refresh("old-token");
+
+        assertThat(result.response().accessToken()).isNotBlank();
+        assertThat(result.response().user().username()).isEqualTo("taro");
+        assertThat(result.rawRefreshToken()).isEqualTo("new-token");
+    }
+
+    @Test
+    @DisplayName("Cookie が無い状態のリフレッシュは 401 相当の例外になる")
+    void refreshWithoutCookieIsRejected() {
+        assertThatThrownBy(() -> authService.refresh(null))
+            .isInstanceOf(InvalidRefreshTokenException.class);
+        assertThatThrownBy(() -> authService.refresh("  "))
+            .isInstanceOf(InvalidRefreshTokenException.class);
+
+        verify(refreshTokenService, never()).rotate(any());
+    }
+
+    @Test
+    @DisplayName("トークンは有効でもユーザーが削除済みならリフレッシュは失敗する")
+    void refreshFailsWhenUserIsGone() {
+        when(refreshTokenService.rotate("old-token"))
+            .thenReturn(new RefreshTokenService.RotationResult(1L, "new-token"));
+        when(userMapper.findById(1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.refresh("old-token"))
+            .isInstanceOf(InvalidRefreshTokenException.class);
+    }
+
+    @Test
+    @DisplayName("ログアウトはリフレッシュトークンの失効に委譲する")
+    void logoutRevokesRefreshToken() {
+        authService.logout("some-token");
+
+        verify(refreshTokenService).revoke("some-token");
     }
 }

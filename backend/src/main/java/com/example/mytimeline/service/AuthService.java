@@ -6,6 +6,7 @@ import com.example.mytimeline.dto.SignupRequest;
 import com.example.mytimeline.dto.UserResponse;
 import com.example.mytimeline.exception.DuplicateFieldException;
 import com.example.mytimeline.exception.InvalidCredentialsException;
+import com.example.mytimeline.exception.InvalidRefreshTokenException;
 import com.example.mytimeline.mapper.UserMapper;
 import com.example.mytimeline.model.User;
 import com.example.mytimeline.security.JwtService;
@@ -15,7 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 新規登録とログインの業務ロジック。
+ * 新規登録・ログイン・トークン更新の業務ロジック。
  */
 @Service
 public class AuthService {
@@ -23,18 +24,25 @@ public class AuthService {
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final RefreshTokenService refreshTokenService;
 
-    public AuthService(UserMapper userMapper, PasswordEncoder passwordEncoder, JwtService jwtService) {
+    public AuthService(
+        UserMapper userMapper,
+        PasswordEncoder passwordEncoder,
+        JwtService jwtService,
+        RefreshTokenService refreshTokenService
+    ) {
         this.userMapper = userMapper;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.refreshTokenService = refreshTokenService;
     }
 
     /**
      * アカウントを作成し、そのままログイン状態にする（F01 2. 機能詳細）。
      */
     @Transactional
-    public AuthResponse signup(SignupRequest request) {
+    public AuthResult signup(SignupRequest request) {
         if (userMapper.findByUsername(request.username()).isPresent()) {
             throw new DuplicateFieldException("username", "このユーザー名は既に使用されています");
         }
@@ -55,14 +63,14 @@ public class AuthService {
 
         // created_at などの DB 側で採番された値を含めて返すため読み直す
         User created = userMapper.findById(user.getId()).orElseThrow();
-        return new AuthResponse(jwtService.generateToken(created), UserResponse.from(created));
+        return issueFor(created);
     }
 
     /**
      * メールアドレスまたはユーザー名とパスワードで認証し、トークンを発行する。
      */
-    @Transactional(readOnly = true)
-    public AuthResponse login(LoginRequest request) {
+    @Transactional
+    public AuthResult login(LoginRequest request) {
         User user = findByIdentifier(request.identifier())
             .orElseThrow(InvalidCredentialsException::new);
 
@@ -70,7 +78,40 @@ public class AuthService {
             throw new InvalidCredentialsException();
         }
 
-        return new AuthResponse(jwtService.generateToken(user), UserResponse.from(user));
+        return issueFor(user);
+    }
+
+    /**
+     * リフレッシュトークンを使ってアクセストークンを取り直す。
+     *
+     * <p>リフレッシュトークンも同時に新しい物へ差し替える（ローテーション）。
+     * 使い回さないことで、漏れた古いトークンが使われた際に検知できる。</p>
+     */
+    @Transactional
+    public AuthResult refresh(String rawRefreshToken) {
+        if (rawRefreshToken == null || rawRefreshToken.isBlank()) {
+            throw new InvalidRefreshTokenException();
+        }
+
+        RefreshTokenService.RotationResult rotation = refreshTokenService.rotate(rawRefreshToken);
+        User user = userMapper.findById(rotation.userId())
+            // トークンは有効だが対象ユーザーが削除済みのケース
+            .orElseThrow(InvalidRefreshTokenException::new);
+
+        return new AuthResult(
+            new AuthResponse(jwtService.generateAccessToken(user), UserResponse.from(user)),
+            rotation.rawToken()
+        );
+    }
+
+    /**
+     * ログアウト。提示されたリフレッシュトークンのユーザーの全セッションを失効させる。
+     *
+     * <p>トークンが無効・不在でも例外にしない（{@link RefreshTokenService#revoke}）。</p>
+     */
+    @Transactional
+    public void logout(String rawRefreshToken) {
+        refreshTokenService.revoke(rawRefreshToken);
     }
 
     /**
@@ -90,5 +131,24 @@ public class AuthService {
     private Optional<User> findByIdentifier(String identifier) {
         return userMapper.findByEmail(identifier)
             .or(() -> userMapper.findByUsername(identifier));
+    }
+
+    private AuthResult issueFor(User user) {
+        return new AuthResult(
+            new AuthResponse(jwtService.generateAccessToken(user), UserResponse.from(user)),
+            refreshTokenService.issue(user.getId())
+        );
+    }
+
+    /**
+     * サービス層の戻り値。
+     *
+     * <p>リフレッシュトークンの生値は {@link AuthResponse} に入れずここで分けて返す。
+     * Cookie に載せるのは HTTP の関心事なので、組み立てはコントローラ層の責務とする。</p>
+     *
+     * @param response           レスポンスボディ（アクセストークン + ユーザー）
+     * @param rawRefreshToken    Cookie に載せるリフレッシュトークンの生値
+     */
+    public record AuthResult(AuthResponse response, String rawRefreshToken) {
     }
 }

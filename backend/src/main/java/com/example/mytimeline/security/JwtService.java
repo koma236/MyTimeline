@@ -16,10 +16,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * JWT の発行と検証。JWT ライブラリへの依存はこのクラスに閉じる。
+ * アクセストークン（JWT）の発行と検証。JWT ライブラリへの依存はこのクラスに閉じる。
  *
  * <p>トークンに入れるのは「誰か」を特定するための情報だけで、
  * パスワードやメールアドレスなどの秘密情報は含めない（ペイロードは誰でも復号できるため）。</p>
+ *
+ * <p>リフレッシュトークンは JWT ではなくランダム値なので、このクラスは扱わない
+ * （{@link com.example.mytimeline.service.RefreshTokenService} の責務）。</p>
  */
 @Service
 public class JwtService {
@@ -29,25 +32,25 @@ public class JwtService {
     private static final String CLAIM_USERNAME = "username";
 
     private final SecretKey signingKey;
-    private final Duration expiration;
+    private final Duration accessTokenExpiration;
 
     public JwtService(JwtProperties properties) {
         // 署名アルゴリズムは鍵長から決まる（32/48/64 バイト以上でそれぞれ HS256 / HS384 / HS512）。
         // 32 バイト未満の場合は WeakKeyException となり起動時に気付ける。
         this.signingKey = Keys.hmacShaKeyFor(properties.secret().getBytes(StandardCharsets.UTF_8));
-        this.expiration = Duration.ofMinutes(properties.expirationMinutes());
+        this.accessTokenExpiration = Duration.ofMinutes(properties.accessExpirationMinutes());
     }
 
     /**
-     * ユーザーに対する署名済みトークンを発行する。
+     * ユーザーに対する署名済みアクセストークンを発行する。
      */
-    public String generateToken(User user) {
+    public String generateAccessToken(User user) {
         Instant now = Instant.now();
         return Jwts.builder()
             .subject(String.valueOf(user.getId()))
             .claim(CLAIM_USERNAME, user.getUsername())
             .issuedAt(Date.from(now))
-            .expiration(Date.from(now.plus(expiration)))
+            .expiration(Date.from(now.plus(accessTokenExpiration)))
             .signWith(signingKey)
             .compact();
     }
