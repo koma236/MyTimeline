@@ -3,6 +3,7 @@ import { ProtectedRoute, PublicOnlyRoute } from './auth/RouteGuards'
 import { Header } from './components/Header'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
+import { PostDetailPage } from './pages/PostDetailPage'
 import { SignupPage } from './pages/SignupPage'
 
 export default function App() {
@@ -14,6 +15,7 @@ export default function App() {
         <Routes>
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<HomePage />} />
+            <Route path="/posts/:id" element={<PostDetailPage />} />
           </Route>
 
           <Route element={<PublicOnlyRoute />}>

@@ -69,4 +69,22 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
             .body(ErrorResponse.of(e.getMessage()));
     }
+
+    /**
+     * 対象の投稿が存在しない → 404。
+     */
+    @ExceptionHandler(PostNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handlePostNotFound(PostNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(ErrorResponse.of(e.getMessage()));
+    }
+
+    /**
+     * 他人の投稿への編集・削除 → 403。
+     */
+    @ExceptionHandler(PostForbiddenException.class)
+    public ResponseEntity<ErrorResponse> handlePostForbidden(PostForbiddenException e) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+            .body(ErrorResponse.of(e.getMessage()));
+    }
 }
