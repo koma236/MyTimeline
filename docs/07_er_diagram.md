@@ -5,6 +5,7 @@
 | テーブル名 | 説明 |
 |-----------|------|
 | users | ユーザー（アカウント）を管理する |
+| refresh_tokens | ログインセッション（リフレッシュトークン）を管理する |
 | posts | 投稿（ポスト）を管理する |
 | post_images | 投稿に添付された画像（S3キー）を管理する |
 | comments | 投稿へのコメントを管理する |
@@ -75,6 +76,19 @@
 | created_at | DATETIME | ○ | 作成日時 |
 | updated_at | DATETIME | ○ | 更新日時 |
 
+#### refresh_tokens テーブル
+
+1 行が 1 セッション（1 ブラウザ）に対応する。詳細は [features/F01_auth.md](features/F01_auth.md) 2. 認証方式を参照。
+
+| カラム名 | 型 | NOT NULL | 説明 |
+|---------|-----|----------|------|
+| id | BIGINT | ○ | 主キー（自動採番） |
+| user_id | BIGINT | ○ | 外部キー（users.id）。ユーザー削除時は CASCADE |
+| token_hash | CHAR(64) | ○ | トークン生値の SHA-256（16進64文字）。**UNIQUE**。生値は保存しない |
+| expires_at | DATETIME | ○ | 有効期限（既定 14 日） |
+| revoked_at | DATETIME | - | 失効日時。NULL なら有効。ローテーション・ログアウト・盗用検知で設定 |
+| created_at | DATETIME | ○ | 作成日時 |
+
 #### posts テーブル
 
 | カラム名 | 型 | NOT NULL | 説明 |
@@ -127,6 +141,7 @@
 ### 8.4 制約
 
 - **外部キー制約:**
+  - `refresh_tokens.user_id` → `users.id`
   - `posts.user_id` → `users.id`
   - `post_images.post_id` → `posts.id`
   - `comments.post_id` → `posts.id` / `comments.user_id` → `users.id`
@@ -134,12 +149,14 @@
   - `follows.follower_id` → `users.id` / `follows.followee_id` → `users.id`
 - **UNIQUE 制約:**
   - `users.username`、`users.email` は一意
+  - `refresh_tokens.token_hash` は一意
   - `likes(post_id, user_id)` は複合 UNIQUE（同一ユーザーの二重いいねを防止）
   - `follows(follower_id, followee_id)` は複合 UNIQUE（二重フォローを防止）
 - **チェック制約:**
   - `follows.follower_id <> followee_id`（自分自身はフォロー不可）
 - **カスケード削除:**
   - 投稿削除時、配下の `post_images` / `comments` / `likes` を削除する
+  - ユーザー削除時、配下の `refresh_tokens` を削除する
   - ユーザー削除時、配下の `posts`（およびその配下）・`comments` / `likes` / `follows`（follower・followee 両方向）を削除する
 - **集計方針:**
   - いいね数・コメント数・フォロー中数・フォロワー数は、対応テーブルの `COUNT` で取得する（初期フェーズでは非正規化カウンタを持たない）

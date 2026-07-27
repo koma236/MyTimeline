@@ -60,4 +60,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
             .body(ErrorResponse.of(e.getMessage()));
     }
+
+    /**
+     * リフレッシュトークンが無効 → 401。クライアントはログイン画面へ戻す。
+     */
+    @ExceptionHandler(InvalidRefreshTokenException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidRefreshToken(InvalidRefreshTokenException e) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+            .body(ErrorResponse.of(e.getMessage()));
+    }
 }

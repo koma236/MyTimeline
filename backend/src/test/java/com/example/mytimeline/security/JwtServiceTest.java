@@ -13,7 +13,7 @@ class JwtServiceTest {
 
     private static final String SECRET = "test-secret-key-for-unit-test-at-least-32-bytes";
 
-    private final JwtService jwtService = new JwtService(new JwtProperties(SECRET, 60));
+    private final JwtService jwtService = new JwtService(new JwtProperties(SECRET, 60, 14, false));
 
     private static User user(long id, String username) {
         User user = new User();
@@ -25,7 +25,7 @@ class JwtServiceTest {
     @Test
     @DisplayName("発行したトークンから userId と username を復元できる")
     void generateAndParse() {
-        String token = jwtService.generateToken(user(42L, "taro"));
+        String token = jwtService.generateAccessToken(user(42L, "taro"));
 
         Optional<CurrentUser> parsed = jwtService.parseToken(token);
 
@@ -35,19 +35,26 @@ class JwtServiceTest {
     @Test
     @DisplayName("署名を書き換えたトークンは拒否される")
     void rejectsTamperedSignature() {
-        String token = jwtService.generateToken(user(42L, "taro"));
-        // 末尾に文字を足すだけでは Base64URL デコード時に捨てられて同じ署名になり得るため、
-        // 最後の 1 文字を別の文字に「置き換える」ことで確実に署名を変える
-        char last = token.charAt(token.length() - 1);
-        String tampered = token.substring(0, token.length() - 1) + (last == 'A' ? 'B' : 'A');
+        String token = jwtService.generateAccessToken(user(42L, "taro"));
+        String[] parts = token.split("\\.");
 
+        // 文字列の末尾をいじる方法は使えない。HS256 の署名 32 バイトを Base64URL にすると
+        // 43 文字 = 258 ビットになり、最後の 1 文字の下位 2 ビットはデコード時に捨てられる。
+        // そのため 'A'〜'D' はいずれも同じバイト列にデコードされ、署名が変わらないことがある。
+        // バイト列に戻して 1 ビット反転させれば、確実に別の署名になる。
+        byte[] signature = Base64.getUrlDecoder().decode(parts[2]);
+        signature[0] ^= 0x01;
+        String tampered = parts[0] + "." + parts[1] + "."
+            + Base64.getUrlEncoder().withoutPadding().encodeToString(signature);
+
+        assertThat(tampered).isNotEqualTo(token);
         assertThat(jwtService.parseToken(tampered)).isEmpty();
     }
 
     @Test
     @DisplayName("ペイロードを書き換えたトークンは拒否される（別ユーザーへのなりすまし防止）")
     void rejectsTamperedPayload() {
-        String token = jwtService.generateToken(user(42L, "taro"));
+        String token = jwtService.generateAccessToken(user(42L, "taro"));
         String[] parts = token.split("\\.");
 
         Base64.Decoder decoder = Base64.getUrlDecoder();
@@ -66,7 +73,7 @@ class JwtServiceTest {
     @Test
     @DisplayName("alg を none にした署名なしトークンは拒否される")
     void rejectsUnsignedToken() {
-        String token = jwtService.generateToken(user(42L, "taro"));
+        String token = jwtService.generateAccessToken(user(42L, "taro"));
         String[] parts = token.split("\\.");
 
         String header = Base64.getUrlEncoder().withoutPadding()
@@ -79,9 +86,9 @@ class JwtServiceTest {
     @DisplayName("別の鍵で署名されたトークンは拒否される")
     void rejectsTokenSignedWithAnotherKey() {
         JwtService other = new JwtService(
-            new JwtProperties("another-secret-key-for-unit-test-at-least-32-bytes", 60)
+            new JwtProperties("another-secret-key-for-unit-test-at-least-32-bytes", 60, 14, false)
         );
-        String token = other.generateToken(user(42L, "taro"));
+        String token = other.generateAccessToken(user(42L, "taro"));
 
         assertThat(jwtService.parseToken(token)).isEmpty();
     }
@@ -90,8 +97,8 @@ class JwtServiceTest {
     @DisplayName("有効期限切れのトークンは拒否される")
     void rejectsExpiredToken() {
         // 有効期間 -1 分 = 発行時点ですでに期限切れ
-        JwtService expiring = new JwtService(new JwtProperties(SECRET, -1));
-        String token = expiring.generateToken(user(42L, "taro"));
+        JwtService expiring = new JwtService(new JwtProperties(SECRET, -1, 14, false));
+        String token = expiring.generateAccessToken(user(42L, "taro"));
 
         assertThat(jwtService.parseToken(token)).isEmpty();
     }
