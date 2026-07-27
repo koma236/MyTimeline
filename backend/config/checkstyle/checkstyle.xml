@@ -1,0 +1,90 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+    "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+    "https://checkstyle.org/dtds/configuration_1_3.dtd">
+
+<!--
+  このプロジェクトの Java コード規約。
+
+  Google / Sun のプリセットは採用していない。どちらもインデント幅や行長がこの
+  プロジェクトの既存コード（4 スペース・日本語 Javadoc 込みで最大 160 字程度）と
+  食い違い、規約に合わせるためだけの大量の書き換えが必要になるため。
+  ここでは「実際にバグや読みにくさにつながるもの」だけを検査する。
+-->
+<module name="Checker">
+    <property name="charset" value="UTF-8"/>
+    <property name="severity" value="error"/>
+    <property name="fileExtensions" value="java"/>
+
+    <!-- ファイル末尾は改行で終える -->
+    <module name="NewlineAtEndOfFile"/>
+
+    <!-- 行末の余分な空白 -->
+    <module name="RegexpSingleline">
+        <property name="format" value="\s+$"/>
+        <property name="message" value="行末に余分な空白があります"/>
+    </module>
+
+    <!-- タブは使わない（既存コードはすべてスペース） -->
+    <module name="FileTabCharacter"/>
+
+    <!--
+      日本語の Javadoc は全角文字で桁数を食うため、Google の 100 字ではなく
+      160 字を上限とする。既存コードの最長は 154 字。
+    -->
+    <module name="LineLength">
+        <property name="max" value="160"/>
+        <property name="ignorePattern" value="^\s*//\s*https?://"/>
+    </module>
+
+    <module name="TreeWalker">
+        <!-- インポート -->
+        <module name="AvoidStarImport"/>
+        <module name="UnusedImports"/>
+        <module name="RedundantImport"/>
+
+        <!-- 命名規約 -->
+        <module name="PackageName"/>
+        <module name="TypeName"/>
+        <module name="MethodName"/>
+        <module name="LocalVariableName"/>
+        <module name="ParameterName"/>
+        <module name="MemberName"/>
+        <module name="StaticVariableName"/>
+        <!--
+          定数は SCREAMING_SNAKE_CASE。ただしロガーの `log` だけは例外とする。
+          既存コード（JwtService / RefreshTokenService）がこの名前を使っており、
+          Lombok の @Slf4j が生成する名前とも一致する慣用表現のため。
+        -->
+        <module name="ConstantName">
+            <property name="format" value="^(log|[A-Z][A-Z0-9]*(_[A-Z0-9]+)*)$"/>
+        </module>
+
+        <!-- 波かっこ。1 行 if の省略はバグの温床なので必須にする -->
+        <module name="NeedBraces"/>
+        <module name="LeftCurly"/>
+        <module name="RightCurly"/>
+
+        <!-- 空白 -->
+        <module name="WhitespaceAfter"/>
+        <module name="NoWhitespaceBefore"/>
+        <module name="GenericWhitespace"/>
+        <module name="MethodParamPad"/>
+
+        <!-- 実装上の注意点 -->
+        <module name="EqualsHashCode"/>
+        <module name="StringLiteralEquality"/>
+        <module name="SimplifyBooleanExpression"/>
+        <module name="SimplifyBooleanReturn"/>
+        <module name="FallThrough"/>
+        <module name="MissingSwitchDefault"/>
+        <module name="EmptyStatement"/>
+        <module name="OneStatementPerLine"/>
+        <module name="DefaultComesLast"/>
+        <module name="MultipleVariableDeclarations"/>
+
+        <!-- 修飾子の順序（public static final ...） -->
+        <module name="ModifierOrder"/>
+        <module name="RedundantModifier"/>
+    </module>
+</module>

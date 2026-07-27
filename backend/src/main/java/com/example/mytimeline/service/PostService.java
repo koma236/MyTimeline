@@ -9,6 +9,8 @@ import com.example.mytimeline.mapper.PostMapper;
 import com.example.mytimeline.model.Post;
 import java.util.ArrayList;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +20,14 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class PostService {
+
+    /**
+     * 更新系の操作を記録する。
+     *
+     * <p>本文は載せない。投稿内容はユーザーのデータであり、ログに残す必要がないため。
+     * 追跡に要るのは「誰がどの投稿をどうしたか」だけ。</p>
+     */
+    private static final Logger log = LoggerFactory.getLogger(PostService.class);
 
     /** クライアントが limit を指定しなかった場合の取得件数。 */
     static final int DEFAULT_LIMIT = 20;
@@ -43,6 +53,7 @@ public class PostService {
         post.setUserId(userId);
         post.setBody(request.body());
         postMapper.insert(post);
+        log.info("投稿を作成しました: postId={}, userId={}", post.getId(), userId);
 
         return PostResponse.from(findOrThrow(post.getId()));
     }
@@ -61,6 +72,8 @@ public class PostService {
         verifyOwner(post, currentUserId);
 
         postMapper.updateBody(id, request.body());
+        log.info("投稿を編集しました: postId={}, userId={}", id, currentUserId);
+
         return PostResponse.from(findOrThrow(id));
     }
 
@@ -76,6 +89,7 @@ public class PostService {
         verifyOwner(post, currentUserId);
 
         postMapper.deleteById(id);
+        log.info("投稿を削除しました: postId={}, userId={}", id, currentUserId);
     }
 
     /** 全体タイムライン（F02「すべて」タブ）。 */
