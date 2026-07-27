@@ -53,11 +53,12 @@ MyTimeline/
 │   │       └── dto/          # リクエスト / レスポンス DTO
 │   └── src/main/resources/
 │       └── db/migration/     # Flyway マイグレーションスクリプト
-├── frontend/                 # React アプリケーション（実装予定）
+├── frontend/                 # React アプリケーション
 │   └── src/
-│       ├── api/              # Axios クライアント設定
-│       ├── components/       # UI コンポーネント（Timeline / PostCard / CommentList など）
-│       ├── hooks/            # TanStack Query カスタムフック
+│       ├── api/              # Axios クライアント設定（自動リフレッシュを含む）
+│       ├── auth/             # 認証状態（Context）とルーティングガード
+│       ├── components/       # UI コンポーネント（Field / Header など）
+│       ├── pages/            # 画面（Login / Signup / Home）
 │       └── types/            # API レスポンス型定義
 ├── docs/                     # 設計ドキュメント（要件定義・機能定義書）
 ├── docker-compose.yml        # PostgreSQL + Backend + Frontend（予定）
@@ -148,8 +149,11 @@ curl -s http://localhost:8080/actuator/health
 |---------|------|------|
 | POST | `/api/auth/signup` | 新規登録 |
 | POST | `/api/auth/login` | ログイン |
-| POST | `/api/auth/logout` | ログアウト |
+| POST | `/api/auth/refresh` | アクセストークンの再発行（httpOnly Cookie で認証） |
+| POST | `/api/auth/logout` | ログアウト（リフレッシュトークンを失効） |
 | GET | `/api/auth/me` | ログイン中ユーザー取得 |
+
+アクセストークン（`Authorization: Bearer`・15 分）とリフレッシュトークン（httpOnly Cookie・14 日・ローテーションあり）の 2 トークン方式。詳細は [F01](docs/features/F01_auth.md) を参照。
 
 ### タイムライン（[F02](docs/features/F02_timeline.md)）
 
