@@ -6,6 +6,11 @@ services:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+      # created_at / updated_at はタイムゾーンを持たない TIMESTAMP で保存し、
+      # API もタイムゾーン無しの文字列で返す。コンテナが既定の UTC のままだと
+      # ブラウザが JST として解釈して 9 時間ずれるため、DB 側の時刻を JST に揃える
+      # （docs/09_infrastructure.md のリージョンは ap-northeast-1）
+      TZ: Asia/Tokyo
     ports:
       - "5432:5432"
     volumes:
@@ -33,6 +38,8 @@ services:
       JWT_ACCESS_EXPIRATION_MINUTES: ${JWT_ACCESS_EXPIRATION_MINUTES}
       JWT_REFRESH_EXPIRATION_DAYS: ${JWT_REFRESH_EXPIRATION_DAYS}
       REFRESH_COOKIE_SECURE: ${REFRESH_COOKIE_SECURE}
+      # db と同じ理由で JST に揃える
+      TZ: Asia/Tokyo
     depends_on:
       db:
         condition: service_healthy
