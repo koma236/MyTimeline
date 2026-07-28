@@ -1,6 +1,7 @@
 plugins {
 	id 'java'
 	id 'checkstyle'
+	id 'com.github.spotbugs' version '6.4.7'
 	id 'org.springframework.boot' version '4.0.6'
 	id 'io.spring.dependency-management' version '1.1.7'
 }
@@ -31,6 +32,28 @@ checkstyle {
 	// 違反があればビルドを失敗させる（警告として見逃さない）
 	ignoreFailures = false
 	maxWarnings = 0
+}
+
+// Checkstyle は「書き方」しか見ない（命名・空白・波かっこ）。
+// NullPointerException になりうる参照や握りつぶした例外のような「動かすと壊れる」類は
+// バイトコードを解析する SpotBugs でないと拾えないため、両方を有効にしている。
+spotbugs {
+	toolVersion = '4.9.8'
+	// 精度優先。このプロジェクトの規模なら解析時間は問題にならない。
+	// enum 定数が class body を持つため、定数を直接参照すると Gradle が
+	// 無名サブクラスと見なして変換に失敗する。valueOf で渡すこと
+	effort = com.github.spotbugs.snom.Effort.valueOf('MAX')
+	excludeFilter = file('config/spotbugs/exclude.xml')
+	// checkstyle と同じく、違反があればビルドを失敗させる
+	ignoreFailures = false
+}
+
+tasks.withType(com.github.spotbugs.snom.SpotBugsTask).configureEach {
+	reports {
+		// CI 向けの XML より、ローカルでそのまま開ける HTML を既定にする
+		html.required = true
+		xml.required = false
+	}
 }
 
 dependencies {

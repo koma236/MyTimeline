@@ -21,3 +21,5 @@
 | TBD-04 | 投稿本文の上限文字数 | 暫定 280 文字。正式値は機能定義書で確定する | 未決 |
 | TBD-05 | 画像枚数・形式・サイズ上限 | 暫定「最大 4 枚 / JPEG・PNG / 1 枚あたり数 MB」。正式値は [F03_post.md](features/F03_post.md) で確定する | 未決 |
 | TBD-06 | プロフィール編集機能 | 表示名・自己紹介・アバターの編集は初期スコープ外。今後検討 | 未決 |
+| TBD-07 | TanStack Query の導入可否 | [02_tech_stack.md](02_tech_stack.md) に記載していたが未導入。現状はサーバー状態を自前フック（`frontend/src/hooks/useTimeline.ts`）で保持している。導入するかは今後判断する | 未決 |
+| TBD-08 | 日時のタイムゾーン | DB は `TIMESTAMP`（タイムゾーンなし）、API は `LocalDateTime` をタイムゾーン無しの文字列で返す。**正しさをコンテナの `TZ=Asia/Tokyo`（docker-compose.yml）に依存している**。複数リージョン運用や、サーバーとブラウザのタイムゾーンが異なる状況では `TIMESTAMPTZ` + `Instant`/`OffsetDateTime` への移行が必要 | 未決（学習段階では現状で許容） |

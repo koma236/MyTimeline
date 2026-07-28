@@ -12,6 +12,7 @@ import com.example.mytimeline.dto.SignupRequest;
 import com.example.mytimeline.exception.DuplicateFieldException;
 import com.example.mytimeline.exception.InvalidCredentialsException;
 import com.example.mytimeline.exception.InvalidRefreshTokenException;
+import com.example.mytimeline.exception.UserNotFoundException;
 import com.example.mytimeline.mapper.UserMapper;
 import com.example.mytimeline.model.User;
 import com.example.mytimeline.security.JwtProperties;
@@ -215,5 +216,16 @@ class AuthServiceTest {
         authService.logout("some-token");
 
         verify(refreshTokenService).revoke("some-token");
+    }
+
+    @Test
+    @DisplayName("削除済みユーザーの取得は、ログイン失敗とは別の文言の例外になる")
+    void getByIdFailsWithUserNotFoundWhenUserIsGone() {
+        when(userMapper.findById(1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.getById(1L))
+            .isInstanceOf(UserNotFoundException.class)
+            // 何も入力していない /me で「メールアドレスまたはパスワードが…」とは言わない
+            .hasMessage(UserNotFoundException.MESSAGE);
     }
 }

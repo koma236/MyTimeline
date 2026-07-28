@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SpotBugs の除外設定。
+
+  ここに足すのは「SpotBugs の指摘がこのプロジェクトでは成立しない」場合だけに限ること。
+  実際の不具合を黙らせるために使ってはならない。除外する場合は必ず理由を書く。
+-->
+<FindBugsFilter>
+
+    <!--
+      EI_EXPOSE_REP2: 「コンストラクタで外部の可変オブジェクトの参照をそのまま保持している」。
+
+      検出されたのは SecurityConfig / 各 Controller / 各 Service など、
+      すべて Spring のコンストラクタインジェクションを受けている箇所である。
+      DI コンテナが管理するシングルトンの Bean を防御的コピーすることはできないし、
+      コピーしてしまうと DI そのものが成立しない。Spring アプリでは常に成立しない指摘なので
+      パターンごと除外する。
+    -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+
+    <!--
+      EI_EXPOSE_REP: 「getter がコレクション / 可変オブジェクトの参照をそのまま返している」。
+
+      検出されたのは ErrorResponse.fieldErrors() と TimelineResponse.posts() で、
+      いずれも「組み立てて即 JSON へ直列化して捨てる」レスポンス DTO の record である。
+      呼び出し元は Jackson だけで、返した後に中身を書き換える経路が存在しない。
+
+      また model パッケージの User / Post は MyBatis が結果セットから組み立てる DB 行の器で、
+      防御的コピーを挟むと MyBatis が値を詰められなくなる。
+      （LocalDateTime は不変クラスなので、参照を共有しても書き換えられない）
+    -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+    </Match>
+
+</FindBugsFilter>

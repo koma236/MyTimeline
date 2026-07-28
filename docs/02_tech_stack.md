@@ -10,8 +10,13 @@
 | 言語 | TypeScript | 6.0.2 |
 | バンドラー | Vite | 8.0.10 |
 | スタイリング | Tailwind CSS | 3.4.19 |
-| HTTPクライアント | Axios | 1.15.2 |
-| サーバー状態管理 | TanStack Query (React Query) | 5.100.5 |
+| HTTPクライアント | Axios | 1.18.1 |
+| サーバー状態管理 | TanStack Query (React Query) | **未導入**（[08_constraints.md](08_constraints.md) TBD-07） |
+| Lint | Oxlint | 1.71.0 |
+
+> **サーバー状態管理について:** TanStack Query は当初の想定として記載していたが、現時点では導入していない。
+> タイムラインの取得・ページングは自前のフック（`frontend/src/hooks/useTimeline.ts`）で扱っている。
+> 導入するかどうかは TBD-07 として未決のまま残している。
 
 ## バックエンド
 
@@ -24,6 +29,8 @@
 | DBマイグレーション | Flyway | (Spring Boot 管理) |
 | 認証・認可 | Spring Security + JWT (jjwt) | Spring Boot 管理 / jjwt 0.12.6 |
 | バリデーション | Bean Validation (jakarta.validation) | (Spring Boot 管理) |
+| 静的解析（規約） | Checkstyle | 10.26.1 |
+| 静的解析（バグ検出） | SpotBugs | 4.9.8 |
 | ビルドツール | Gradle | 8.x |
 
 ## データベース・ローカル実行

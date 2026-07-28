@@ -8,14 +8,15 @@ X（旧 Twitter）風のタイムライン型 SNS アプリ。テキストと画
 
 ## 主な機能
 
-- ユーザー認証（新規登録 / ログイン / ログアウト）
-- タイムライン表示（「フォロー中」「すべて」の 2 タブ）
-- 投稿（テキスト＋画像。画像は AWS S3 に保存）・自分の投稿の削除
-- コメント（投稿へのコメント・件数表示・自分のコメント削除）
-- いいね（いいね / 取り消し・件数表示。1 ユーザー 1 投稿 1 回）
-- フォロー（フォロー / 解除・フォロー中 / フォロワー数表示）
-- ユーザー検索（ユーザー名の部分一致検索、投稿・コメントからのプロフィール遷移）
-- PostgreSQL によるデータ永続化
+| ID | 機能 | 状態 |
+|----|------|------|
+| F01 | ユーザー認証（新規登録 / ログイン / ログアウト） | **実装済み** |
+| F02 | タイムライン表示（「フォロー中」「すべて」の 2 タブ・無限スクロール） | **実装済み**（フォロー中は自分の投稿のみ。F06 実装時に対象を拡張） |
+| F03 | 投稿（テキスト）・自分の投稿の編集 / 削除 | **実装済み**（画像添付は未実装） |
+| F03 | 画像投稿（AWS S3 に保存） | 未実装 |
+| F04 | コメント（投稿へのコメント・件数表示・自分のコメント削除） | 未実装 |
+| F05 | いいね（いいね / 取り消し・件数表示。1 ユーザー 1 投稿 1 回） | 未実装 |
+| F06 | フォロー（フォロー / 解除・フォロー中 / フォロワー数表示）・ユーザー検索 | 未実装 |
 
 **対象外（X との差別化）:** インプレッション数表示 / リツイート / DM / 通知 / ハッシュタグ
 
@@ -25,8 +26,8 @@ X（旧 Twitter）風のタイムライン型 SNS アプリ。テキストと画
 
 | レイヤー | 主な技術 |
 |---------|---------|
-| フロントエンド | React 19 + TypeScript 6 + Vite 8 + Tailwind CSS 3 + TanStack Query |
-| バックエンド | Java 25 + Spring Boot 4.0 + MyBatis + Flyway + Spring Security（JWT 認証） |
+| フロントエンド | React 19 + TypeScript 6 + Vite 8 + Tailwind CSS 3 + Axios（Lint: Oxlint） |
+| バックエンド | Java 25 + Spring Boot 4.0 + MyBatis + Flyway + Spring Security（JWT 認証）（静的解析: Checkstyle + SpotBugs） |
 | データベース | PostgreSQL 15（ローカル）/ PostgreSQL 16（RDS, 本番想定） |
 | 画像ストレージ | AWS S3 |
 | ローカル実行 | Docker + Docker Compose |
@@ -36,40 +37,44 @@ X（旧 Twitter）風のタイムライン型 SNS アプリ。テキストと画
 
 ---
 
-## ディレクトリ構成（予定）
+## ディレクトリ構成
 
 ```
 MyTimeline/
 ├── backend/                  # Spring Boot アプリケーション
+│   ├── config/
+│   │   ├── checkstyle/       # Checkstyle 規約（命名・空白・波かっこ）
+│   │   └── spotbugs/         # SpotBugs の除外設定（理由付き）
 │   ├── src/main/java/
 │   │   └── com/example/mytimeline/
-│   │       ├── config/       # Spring Security 設定など
+│   │       ├── config/       # Spring Security / CORS 設定
 │   │       ├── controller/   # REST コントローラー
 │   │       ├── service/      # ビジネスロジック
-│   │       ├── mapper/       # MyBatis Mapper（SQL）
-│   │       ├── model/        # テーブルに対応するモデル（User/Post/PostImage/Comment/Like/Follow）
-│   │       ├── security/     # 認証・認可（JWT）
+│   │       ├── mapper/       # MyBatis Mapper（アノテーション SQL）
+│   │       ├── model/        # テーブルに対応するモデル（User/Post/RefreshToken）
+│   │       ├── security/     # 認証・認可（JWT・Cookie）
 │   │       ├── exception/    # 例外と共通エラーハンドリング
-│   │       └── dto/          # リクエスト / レスポンス DTO
+│   │       └── dto/          # リクエスト / レスポンス DTO（record）
 │   └── src/main/resources/
-│       └── db/migration/     # Flyway マイグレーションスクリプト
+│       ├── db/migration/     # Flyway マイグレーションスクリプト
+│       └── mapper/           # MyBatis XML Mapper（JOIN・動的条件を含む SQL）
 ├── frontend/                 # React アプリケーション
 │   └── src/
 │       ├── api/              # Axios クライアント設定（自動リフレッシュを含む）
 │       ├── auth/             # 認証状態（Context）とルーティングガード
-│       ├── components/       # UI コンポーネント（Field / Header など）
-│       ├── pages/            # 画面（Login / Signup / Home）
-│       └── types/            # API レスポンス型定義
+│       ├── components/       # UI コンポーネント（Field / Header / PostCard など）
+│       ├── hooks/            # 画面横断のフック（useTimeline）
+│       ├── pages/            # 画面（Login / Signup / Home / PostDetail）
+│       ├── types/            # API レスポンス型定義（バックエンドの DTO と 1:1）
+│       └── utils/            # 表示用の小さなユーティリティ（相対時刻など）
 ├── docs/                     # 設計ドキュメント（要件定義・機能定義書）
-├── docker-compose.yml        # PostgreSQL + Backend + Frontend（予定）
+├── docker-compose.yml        # PostgreSQL + Backend
 └── .claude/                  # Claude Code 用スキル・権限設定
 ```
 
 ---
 
-## ローカル開発環境のセットアップ（予定）
-
-> バックエンド / フロントエンドは実装予定。以下は想定手順。
+## ローカル開発環境のセットアップ
 
 ### 前提条件
 
@@ -117,13 +122,28 @@ npm run dev
 
 > `.claude/skills/start-servers` スキルで、ポート競合を自動解消しつつ 8080 / 5173 で起動できる。
 
+### 6. 品質チェック
+
+コミット前に以下が通ることを確認する。
+
+```bash
+# バックエンド: コンパイル + Checkstyle（規約）+ SpotBugs（バグ検出）+ テスト
+cd backend && ./gradlew build
+
+# フロントエンド: Oxlint + 型チェック（tsc）
+cd frontend && npm run check
+```
+
 ---
 
-## Docker Compose で全サービスを起動（予定）
+## Docker Compose でサービスを起動
 
 ```bash
 docker compose up -d
 ```
+
+> フロントエンドは compose に含めていない。`npm run dev`（5173）で起動し、
+> Vite のプロキシ経由でバックエンド（8080）を同一オリジンとして参照する。
 
 | サービス | URL |
 |---------|-----|
@@ -139,37 +159,44 @@ curl -s http://localhost:8080/actuator/health
 
 ---
 
-## API エンドポイント（設計・機能定義書ベース）
+## API エンドポイント
 
-> 未実装。各機能定義書（[docs/features/](docs/features/)）で定義した想定エンドポイント。
+> **実装済み**と記した行が現在動作するもの。それ以外は各機能定義書（[docs/features/](docs/features/)）で
+> 定義した想定エンドポイントで、まだ実装していない。
+>
+> エラーはすべて共通形式 `{"message": "...", "fieldErrors": {"項目名": "..."}}` で返る
+> （`fieldErrors` は項目に紐づくエラーがある場合のみ）。
 
 ### 認証（[F01](docs/features/F01_auth.md)）
 
-| メソッド | パス | 説明 |
-|---------|------|------|
-| POST | `/api/auth/signup` | 新規登録 |
-| POST | `/api/auth/login` | ログイン |
-| POST | `/api/auth/refresh` | アクセストークンの再発行（httpOnly Cookie で認証） |
-| POST | `/api/auth/logout` | ログアウト（リフレッシュトークンを失効） |
-| GET | `/api/auth/me` | ログイン中ユーザー取得 |
+| メソッド | パス | 説明 | 状態 |
+|---------|------|------|------|
+| POST | `/api/auth/signup` | 新規登録 | 実装済み |
+| POST | `/api/auth/login` | ログイン | 実装済み |
+| POST | `/api/auth/refresh` | アクセストークンの再発行（httpOnly Cookie で認証） | 実装済み |
+| POST | `/api/auth/logout` | ログアウト（リフレッシュトークンを失効） | 実装済み |
+| GET | `/api/auth/me` | ログイン中ユーザー取得 | 実装済み |
 
 アクセストークン（`Authorization: Bearer`・15 分）とリフレッシュトークン（httpOnly Cookie・14 日・ローテーションあり）の 2 トークン方式。詳細は [F01](docs/features/F01_auth.md) を参照。
 
 ### タイムライン（[F02](docs/features/F02_timeline.md)）
 
-| メソッド | パス | 説明 |
-|---------|------|------|
-| GET | `/api/timeline/following` | フォロー中タイムライン |
-| GET | `/api/timeline/all` | 全体タイムライン |
+| メソッド | パス | 説明 | 状態 |
+|---------|------|------|------|
+| GET | `/api/timeline/following` | フォロー中タイムライン（`?cursor=&limit=`。既定 20 件・最大 50 件） | 実装済み |
+| GET | `/api/timeline/all` | 全体タイムライン（同上） | 実装済み |
+
+ページングはカーソル方式。レスポンスの `nextCursor` を次のリクエストの `cursor` に渡す（`null` なら末尾）。
 
 ### 投稿・画像（[F03](docs/features/F03_post.md)）
 
-| メソッド | パス | 説明 |
-|---------|------|------|
-| POST | `/api/uploads/presign` | 画像アップロード用の署名付き URL 発行 |
-| POST | `/api/posts` | 投稿作成 |
-| GET | `/api/posts/{id}` | 投稿詳細取得 |
-| DELETE | `/api/posts/{id}` | 投稿削除（本人のみ） |
+| メソッド | パス | 説明 | 状態 |
+|---------|------|------|------|
+| POST | `/api/posts` | 投稿作成（本文 280 文字まで） | 実装済み |
+| GET | `/api/posts/{id}` | 投稿詳細取得 | 実装済み |
+| PUT | `/api/posts/{id}` | 投稿の本文を編集（本人のみ） | 実装済み |
+| DELETE | `/api/posts/{id}` | 投稿削除（本人のみ） | 実装済み |
+| POST | `/api/uploads/presign` | 画像アップロード用の署名付き URL 発行 | 未実装 |
 
 ### コメント（[F04](docs/features/F04_comment.md)）
 
@@ -200,16 +227,18 @@ curl -s http://localhost:8080/actuator/health
 
 ## データモデル
 
-6 テーブル構成（PostgreSQL）。詳細は [docs/07_er_diagram.md](docs/07_er_diagram.md)。
+最終的に 6 テーブル構成（PostgreSQL）。詳細は [docs/07_er_diagram.md](docs/07_er_diagram.md)。
+スキーマは Flyway（`backend/src/main/resources/db/migration/`）が唯一の情報源。
 
-| テーブル | 説明 |
-|---------|------|
-| `users` | ユーザー（アカウント） |
-| `posts` | 投稿（ポスト） |
-| `post_images` | 投稿画像（S3 の `s3_key` を保持） |
-| `comments` | 投稿へのコメント |
-| `likes` | いいね（`(post_id, user_id)` は UNIQUE） |
-| `follows` | フォロー関係（`(follower_id, followee_id)` は UNIQUE、自己フォロー禁止） |
+| テーブル | 説明 | 状態 |
+|---------|------|------|
+| `users` | ユーザー（アカウント） | 作成済み（V1） |
+| `refresh_tokens` | リフレッシュトークン（1 行 = 1 セッション。SHA-256 ハッシュを保持） | 作成済み（V2） |
+| `posts` | 投稿（ポスト） | 作成済み（V3） |
+| `post_images` | 投稿画像（S3 の `s3_key` を保持） | 未作成 |
+| `comments` | 投稿へのコメント | 未作成 |
+| `likes` | いいね（`(post_id, user_id)` は UNIQUE） | 未作成 |
+| `follows` | フォロー関係（`(follower_id, followee_id)` は UNIQUE、自己フォロー禁止） | 未作成 |
 
 ---
 

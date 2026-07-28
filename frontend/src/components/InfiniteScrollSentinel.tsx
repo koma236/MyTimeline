@@ -30,7 +30,7 @@ export function InfiniteScrollSentinel({ onVisible }: InfiniteScrollSentinelProp
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting) onVisibleRef.current()
+        if (entries[0]?.isIntersecting) onVisibleRef.current()
       },
       { rootMargin: '400px' },
     )

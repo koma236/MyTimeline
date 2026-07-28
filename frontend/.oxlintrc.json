@@ -1,11 +1,32 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
+  "plugins": ["react", "typescript", "oxc", "import", "jsx-a11y", "promise"],
   "categories": {
-    "correctness": "error"
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "error"
   },
   "rules": {
+    // React hooks の 2 大事故（呼び出し位置・依存配列の漏れ）は必ず落とす
     "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
+    "react/exhaustive-deps": "error",
+    "react/only-export-components": ["warn", { "allowConstantExport": true }],
+
+    // jsx: react-jsx（React 17 の新 JSX 変換）なので import React は不要
+    "react/react-in-jsx-scope": "off",
+
+    // index.css の副作用 import は Vite の標準的な書き方
+    "import/no-unassigned-import": "off",
+
+    // axios の default export は create / isAxiosError を実際に持つ。
+    // 名前付き export と同名なだけで誤りではない
+    "import/no-named-as-default-member": "off",
+
+    // AuthProvider / PostDetailPage の then は値を作らない終端の副作用チェーン。
+    // 「返し忘れでチェーンが切れる」ことを警戒する必要がない
+    "promise/always-return": "off",
+
+    // _retried は「この axios リクエストは再送済み」を示す慣用名（interceptor の再帰防止）
+    "no-underscore-dangle": ["error", { "allow": ["_retried"] }]
   }
 }

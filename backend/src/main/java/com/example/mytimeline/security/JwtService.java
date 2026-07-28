@@ -23,9 +23,14 @@ import org.springframework.stereotype.Service;
  *
  * <p>リフレッシュトークンは JWT ではなくランダム値なので、このクラスは扱わない
  * （{@link com.example.mytimeline.service.RefreshTokenService} の責務）。</p>
+ *
+ * <p>コンストラクタが署名鍵の検証で例外を投げうるため {@code final} にしている。
+ * 継承できると、コンストラクタが途中で失敗した「中途半端に初期化されたインスタンス」を
+ * サブクラスの finalizer 経由で掴めてしまう（SpotBugs: CT_CONSTRUCTOR_THROW）。
+ * このクラスは {@code @Transactional} などのプロキシを必要としないので final にできる。</p>
  */
 @Service
-public class JwtService {
+public final class JwtService {
 
     private static final Logger log = LoggerFactory.getLogger(JwtService.class);
 

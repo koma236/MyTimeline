@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "oxlint",
+    "typecheck": "tsc -b",
+    "lint": "oxlint --max-warnings=0",
+    "check": "npm run lint && npm run typecheck",
     "preview": "vite preview"
   },
   "dependencies": {
