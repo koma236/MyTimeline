@@ -1,6 +1,7 @@
 # MyTimeline フロントエンド
 
-React + TypeScript + Vite + Tailwind CSS で構築した SPA。現時点では認証（F01）の画面のみ実装済み。
+React + TypeScript + Vite + Tailwind CSS で構築した SPA。
+現時点で認証（F01）・タイムライン（F02）・投稿（F03、画像を除く）の画面を実装済み。
 
 ## 起動
 
@@ -31,11 +32,13 @@ npm run dev     # → http://localhost:5173
 
 ```
 src/
-├── api/          Axios クライアント（自動リフレッシュ）と認証 API
+├── api/          Axios クライアント（自動リフレッシュ）と認証 / 投稿 API
 ├── auth/         認証状態の Context とルーティングガード
-├── components/   共通 UI（Field / FormError / SubmitButton / Header）
-├── pages/        画面（Login / Signup / Home）
-└── types/        API の型定義（バックエンドの DTO と 1:1）
+├── components/   共通 UI（Field / FormError / SubmitButton / Header / PostCard / PostComposer）
+├── hooks/        画面横断のフック（useTimeline: 取得とカーソルページング）
+├── pages/        画面（Login / Signup / Home / PostDetail）
+├── types/        API の型定義（バックエンドの DTO と 1:1）
+└── utils/        表示用のユーティリティ（相対時刻）
 ```
 
 ## スクリプト
@@ -44,5 +47,17 @@ src/
 |---------|------|
 | `npm run dev` | 開発サーバー（5173） |
 | `npm run build` | 型チェック（`tsc -b`）＋ 本番ビルド |
-| `npm run lint` | Oxlint |
+| `npm run typecheck` | 型チェックのみ（`tsc -b`） |
+| `npm run lint` | Oxlint（警告も 0 件であること） |
+| `npm run check` | `lint` ＋ `typecheck`。**コミット前にこれを通すこと** |
 | `npm run preview` | ビルド成果物の確認 |
+
+## 品質ゲート
+
+- **TypeScript は `strict` ＋ `noUncheckedIndexedAccess`**（`tsconfig.app.json`）。
+  配列や `Record` への添字アクセスは `undefined` を含むものとして扱われるので、
+  `?.` や `??` で必ず受けること
+- **Oxlint は `correctness` / `suspicious` / `perf` を有効**にし、
+  `react/exhaustive-deps`（hooks の依存配列漏れ）と `react/rules-of-hooks` をエラーにしている
+- 無効化しているルールには `.oxlintrc.json` に理由を書いてある。
+  無効化を増やす場合も必ず理由を添えること
