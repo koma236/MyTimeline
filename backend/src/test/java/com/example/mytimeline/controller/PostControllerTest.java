@@ -219,4 +219,25 @@ class PostControllerTest {
         mockMvc.perform(delete("/api/posts/999").header("Authorization", "Bearer " + VALID_TOKEN))
             .andExpect(status().isNotFound());
     }
+
+    @Test
+    @DisplayName("id が数値でない投稿の取得は 400 を共通エラー形式で返す")
+    void getByIdWithNonNumericIdReturnsBadRequest() throws Exception {
+        mockMvc.perform(get("/api/posts/abc").header("Authorization", "Bearer " + VALID_TOKEN))
+            .andExpect(status().isBadRequest())
+            // Spring 既定の {timestamp, status, error, path} ではなく、
+            // F01 で定めた共通形式で返ること
+            .andExpect(jsonPath("$.message").value("リクエストの形式が正しくありません"));
+    }
+
+    @Test
+    @DisplayName("JSON として壊れた本文の投稿は 400 を共通エラー形式で返す")
+    void createWithMalformedJsonReturnsBadRequest() throws Exception {
+        mockMvc.perform(post("/api/posts")
+                .header("Authorization", "Bearer " + VALID_TOKEN)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"body\":"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("リクエストの形式が正しくありません"));
+    }
 }

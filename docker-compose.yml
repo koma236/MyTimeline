@@ -38,6 +38,8 @@ services:
       JWT_ACCESS_EXPIRATION_MINUTES: ${JWT_ACCESS_EXPIRATION_MINUTES}
       JWT_REFRESH_EXPIRATION_DAYS: ${JWT_REFRESH_EXPIRATION_DAYS}
       REFRESH_COOKIE_SECURE: ${REFRESH_COOKIE_SECURE}
+      # 既存の .env に未設定でも動くよう、compose 側で開発既定値を持たせる
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:*}
       # db と同じ理由で JST に揃える
       TZ: Asia/Tokyo
     depends_on:

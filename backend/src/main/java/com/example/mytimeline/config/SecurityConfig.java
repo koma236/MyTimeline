@@ -5,6 +5,7 @@ import com.example.mytimeline.security.JwtAuthenticationFilter;
 import com.example.mytimeline.security.JwtService;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
@@ -31,14 +32,20 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Configuration
 @EnableWebSecurity
+// CorsProperties をここで明示的に登録する。アプリ本体は @ConfigurationPropertiesScan で
+// 拾えるが、@WebMvcTest のスライスはスキャンを行わないため、このクラスを @Import した
+// テストで CorsProperties の Bean が見つからず起動に失敗する
+@EnableConfigurationProperties(CorsProperties.class)
 public class SecurityConfig {
 
     private final JwtService jwtService;
     private final ObjectMapper objectMapper;
+    private final CorsProperties corsProperties;
 
-    public SecurityConfig(JwtService jwtService, ObjectMapper objectMapper) {
+    public SecurityConfig(JwtService jwtService, ObjectMapper objectMapper, CorsProperties corsProperties) {
         this.jwtService = jwtService;
         this.objectMapper = objectMapper;
+        this.corsProperties = corsProperties;
     }
 
     @Bean
@@ -89,10 +96,9 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of(
-            "http://localhost:*",
-            "https://*.cloudfront.net"
-        ));
+        // 許可オリジンは環境ごとに変わるため app.cors.allowed-origin-patterns から読む。
+        // 開発用の localhost をコードに埋め込むと本番でも許可されてしまう
+        config.setAllowedOriginPatterns(corsProperties.allowedOriginPatterns());
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         // フロントが Authorization ヘッダでトークンを送れるようにする
         config.setAllowedHeaders(List.of(HttpHeaders.AUTHORIZATION, HttpHeaders.CONTENT_TYPE));

@@ -7,6 +7,7 @@ import com.example.mytimeline.dto.UserResponse;
 import com.example.mytimeline.exception.DuplicateFieldException;
 import com.example.mytimeline.exception.InvalidCredentialsException;
 import com.example.mytimeline.exception.InvalidRefreshTokenException;
+import com.example.mytimeline.exception.UserNotFoundException;
 import com.example.mytimeline.mapper.UserMapper;
 import com.example.mytimeline.model.User;
 import com.example.mytimeline.security.JwtService;
@@ -121,8 +122,10 @@ public class AuthService {
     public UserResponse getById(Long userId) {
         return userMapper.findById(userId)
             .map(UserResponse::from)
-            // トークンは有効だが対象ユーザーが削除済みのケース
-            .orElseThrow(InvalidCredentialsException::new);
+            // トークンは有効だが対象ユーザーが削除済みのケース。
+            // ログイン失敗用の文言（「メールアドレスまたはパスワードが…」）は
+            // 何も入力していないこの経路では意味が通らないので使わない
+            .orElseThrow(UserNotFoundException::new);
     }
 
     /**
