@@ -162,6 +162,10 @@ export function PostCard({ post, detail = false, onUpdate, onDelete }: PostCardP
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
               rows={3}
+              // 「編集」を選んだ直後にだけ描画される textarea なので、
+              // ページ読み込み時に勝手にフォーカスを奪う no-autofocus の懸念には当たらない。
+              // むしろここでフォーカスしないと、編集を選んでから手で入力欄を探すことになる
+              // eslint-disable-next-line jsx-a11y/no-autofocus
               autoFocus
               aria-label="投稿の本文を編集"
               className="w-full resize-none rounded-lg border border-border-strong bg-bg px-3 py-2 text-[15px] text-text outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"

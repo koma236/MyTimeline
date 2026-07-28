@@ -13,14 +13,16 @@ const AVATAR_COLORS = [
   '#ff7a00',
   '#e0245e',
   '#17bf63',
-]
+] as const
 
 function avatarColor(username: string): string {
   let sum = 0
   for (let i = 0; i < username.length; i++) {
     sum += username.charCodeAt(i)
   }
-  return AVATAR_COLORS[sum % AVATAR_COLORS.length]
+  // 剰余なので必ず範囲内に収まるが、noUncheckedIndexedAccess では
+  // 変数添字の結果が undefined を含むため既定色を添える
+  return AVATAR_COLORS[sum % AVATAR_COLORS.length] ?? AVATAR_COLORS[0]
 }
 
 interface AvatarProps {

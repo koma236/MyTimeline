@@ -21,6 +21,10 @@ export function useTimeline(tab: TimelineTab) {
    * 無限スクロールの番兵は同じ位置で何度も発火しうるし、React StrictMode は
    * 開発時に effect を 2 回実行する。loading は state なので同一レンダー内の
    * 連続呼び出しを止められず、ref で持つ必要がある。
+   *
+   * 併せて「最後に要求したのは自分か」の判定にも使う。タブを素早く切り替えると
+   * 切替前のリクエストが後から返ることがあり、そのまま反映すると別タブの投稿が
+   * 一覧に入り込んでしまうため、応答を受け取った時点で自分が最新か確認する。
    */
   const requestedKey = useRef<string | null>(null)
 
@@ -34,15 +38,21 @@ export function useTimeline(tab: TimelineTab) {
       setError(undefined)
       try {
         const response = await postsApi.fetchTimeline(tab, cursor)
+        // 待っている間に別のタブ・カーソルが要求されていたら、この応答は捨てる
+        if (requestedKey.current !== key) return
         // 1 ページ目は置き換え、2 ページ目以降は末尾に足す
         setPosts((current) => (cursor == null ? response.posts : [...current, ...response.posts]))
         setNextCursor(response.nextCursor)
       } catch (caught) {
+        if (requestedKey.current !== key) return
         setError(toApiError(caught).message)
         // 失敗した要求は再試行できるようにしておく
         requestedKey.current = null
       } finally {
-        setLoading(false)
+        // 追い越された要求は loading を戻さない（最新の要求がまだ読み込み中のため）
+        if (requestedKey.current === key || requestedKey.current === null) {
+          setLoading(false)
+        }
       }
     },
     [tab],
