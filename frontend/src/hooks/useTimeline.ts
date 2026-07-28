@@ -89,6 +89,16 @@ export function useTimeline(tab: TimelineTab) {
     setPosts((current) => current.map((item) => (item.id === post.id ? post : item)))
   }, [])
 
+  /**
+   * 投稿の一部だけを差し替える。
+   *
+   * いいねの API は投稿全体ではなく { likeCount, likedByMe } しか返さないので、
+   * 完全な PostResponse を要求する replacePost は使えない。
+   */
+  const patchPost = useCallback((id: number, patch: Partial<PostResponse>) => {
+    setPosts((current) => current.map((item) => (item.id === id ? { ...item, ...patch } : item)))
+  }, [])
+
   /** 削除した投稿を取り除く。 */
   const removePost = useCallback((id: number) => {
     setPosts((current) => current.filter((item) => item.id !== id))
@@ -103,6 +113,7 @@ export function useTimeline(tab: TimelineTab) {
     retry,
     prependPost,
     replacePost,
+    patchPost,
     removePost,
   }
 }

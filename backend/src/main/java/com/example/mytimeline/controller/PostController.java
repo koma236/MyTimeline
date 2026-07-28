@@ -42,9 +42,18 @@ public class PostController {
             .body(postService.create(currentUser.id(), request));
     }
 
+    /**
+     * 投稿を 1 件取得する。
+     *
+     * <p>ログインユーザーを渡すのは、レスポンスの {@code likedByMe}（自分がいいね済みか）を
+     * 判定するため。認証必須なので principal は必ず入る。</p>
+     */
     @GetMapping("/{id}")
-    public ResponseEntity<PostResponse> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(postService.getById(id));
+    public ResponseEntity<PostResponse> getById(
+        @PathVariable Long id,
+        @AuthenticationPrincipal CurrentUser currentUser
+    ) {
+        return ResponseEntity.ok(postService.getById(id, currentUser.id()));
     }
 
     /**

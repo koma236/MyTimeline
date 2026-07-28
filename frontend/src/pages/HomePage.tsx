@@ -6,7 +6,7 @@ import { PostCard } from '../components/PostCard'
 import { PostComposer } from '../components/PostComposer'
 import { TimelineTabs } from '../components/TimelineTabs'
 import { useTimeline } from '../hooks/useTimeline'
-import type { TimelineTab } from '../types/post'
+import type { PostResponse, TimelineTab } from '../types/post'
 
 /**
  * タイムライン画面（SCR-03・F02）。ログイン後のメイン画面。
@@ -26,6 +26,7 @@ export function HomePage() {
     retry,
     prependPost,
     replacePost,
+    patchPost,
     removePost,
   } = useTimeline(tab)
 
@@ -44,6 +45,23 @@ export function HomePage() {
       removePost(id)
     },
     [removePost],
+  )
+
+  /**
+   * いいねの付け外し（F05）。
+   *
+   * 押す前の状態で呼び分けるのでトグルの往復にはならず、通信が再送されても
+   * 状態が反転しない。サーバーが返した件数をそのまま反映するので、
+   * 他の人のいいねで数がずれていても押した時点で正しい値に揃う。
+   */
+  const handleToggleLike = useCallback(
+    async (post: PostResponse) => {
+      const result = post.likedByMe
+        ? await postsApi.unlikePost(post.id)
+        : await postsApi.likePost(post.id)
+      patchPost(post.id, result)
+    },
+    [patchPost],
   )
 
   const isEmpty = posts.length === 0 && !loading && !error
@@ -76,7 +94,13 @@ export function HomePage() {
       )}
 
       {posts.map((post) => (
-        <PostCard key={post.id} post={post} onUpdate={handleUpdate} onDelete={handleDelete} />
+        <PostCard
+          key={post.id}
+          post={post}
+          onUpdate={handleUpdate}
+          onDelete={handleDelete}
+          onToggleLike={handleToggleLike}
+        />
       ))}
 
       {/* 続きがあるときだけ番兵を置く。末尾に達したら何も出さずに終わる */}

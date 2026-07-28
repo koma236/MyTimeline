@@ -55,12 +55,12 @@ public class PostService {
         postMapper.insert(post);
         log.info("投稿を作成しました: postId={}, userId={}", post.getId(), userId);
 
-        return PostResponse.from(findOrThrow(post.getId()));
+        return PostResponse.from(findOrThrow(post.getId(), userId));
     }
 
     @Transactional(readOnly = true)
-    public PostResponse getById(Long id) {
-        return PostResponse.from(findOrThrow(id));
+    public PostResponse getById(Long id, Long currentUserId) {
+        return PostResponse.from(findOrThrow(id, currentUserId));
     }
 
     /**
@@ -68,13 +68,13 @@ public class PostService {
      */
     @Transactional
     public PostResponse update(Long id, Long currentUserId, PostRequest request) {
-        Post post = findOrThrow(id);
+        Post post = findOrThrow(id, currentUserId);
         verifyOwner(post, currentUserId);
 
         postMapper.updateBody(id, request.body());
         log.info("投稿を編集しました: postId={}, userId={}", id, currentUserId);
 
-        return PostResponse.from(findOrThrow(id));
+        return PostResponse.from(findOrThrow(id, currentUserId));
     }
 
     /**
@@ -85,7 +85,7 @@ public class PostService {
      */
     @Transactional
     public void delete(Long id, Long currentUserId) {
-        Post post = findOrThrow(id);
+        Post post = findOrThrow(id, currentUserId);
         verifyOwner(post, currentUserId);
 
         postMapper.deleteById(id);
@@ -94,8 +94,8 @@ public class PostService {
 
     /** 全体タイムライン（F02「すべて」タブ）。 */
     @Transactional(readOnly = true)
-    public TimelineResponse getAllTimeline(Long cursor, Integer limit) {
-        return toTimeline(null, cursor, limit);
+    public TimelineResponse getAllTimeline(Long currentUserId, Long cursor, Integer limit) {
+        return toTimeline(null, cursor, limit, currentUserId);
     }
 
     /**
@@ -107,7 +107,7 @@ public class PostService {
      */
     @Transactional(readOnly = true)
     public TimelineResponse getFollowingTimeline(Long currentUserId, Long cursor, Integer limit) {
-        return toTimeline(List.of(currentUserId), cursor, limit);
+        return toTimeline(List.of(currentUserId), cursor, limit, currentUserId);
     }
 
     /**
@@ -116,10 +116,13 @@ public class PostService {
      * <p>「次があるか」を知るために COUNT を別で流すのではなく、要求件数より 1 件多く取得して
      * 余りが出たかどうかで判断する。余った 1 件はレスポンスに含めず、返す最後の投稿の id が
      * 次のカーソルになる。</p>
+     *
+     * <p>いいね数・コメント数・自分のいいね状態はマッパーが同じ 1 本の SQL で埋めてくるので、
+     * ここで投稿ごとに数え直すことはしない。ページの件数によらず発行するクエリは 1 本。</p>
      */
-    private TimelineResponse toTimeline(List<Long> userIds, Long cursor, Integer limit) {
+    private TimelineResponse toTimeline(List<Long> userIds, Long cursor, Integer limit, Long currentUserId) {
         int size = normalizeLimit(limit);
-        List<Post> posts = new ArrayList<>(postMapper.findTimeline(userIds, cursor, size + 1));
+        List<Post> posts = new ArrayList<>(postMapper.findTimeline(userIds, cursor, size + 1, currentUserId));
 
         boolean hasNext = posts.size() > size;
         if (hasNext) {
@@ -138,8 +141,8 @@ public class PostService {
         return Math.min(limit, MAX_LIMIT);
     }
 
-    private Post findOrThrow(Long id) {
-        return postMapper.findById(id).orElseThrow(PostNotFoundException::new);
+    private Post findOrThrow(Long id, Long currentUserId) {
+        return postMapper.findById(id, currentUserId).orElseThrow(PostNotFoundException::new);
     }
 
     /**

@@ -5,17 +5,20 @@
 <mapper namespace="com.example.mytimeline.mapper.PostMapper">
 
     <!--
-      投稿と投稿者をまとめて 1 オブジェクトに詰める。
+      投稿と投稿者、いいね数・コメント数・自分のいいね状態をまとめて 1 オブジェクトに詰める。
       投稿ごとにユーザーを引き直す N+1 を避けるため、association は
       別クエリ（select 属性）ではなく JOIN 済みの列から組み立てている。
       users の列は別名を付けて posts の同名列（id / created_at）との衝突を避ける。
     -->
     <resultMap id="PostWithAuthor" type="com.example.mytimeline.model.Post">
-        <id     property="id"        column="id"/>
-        <result property="userId"    column="user_id"/>
-        <result property="body"      column="body"/>
-        <result property="createdAt" column="created_at"/>
-        <result property="updatedAt" column="updated_at"/>
+        <id     property="id"           column="id"/>
+        <result property="userId"       column="user_id"/>
+        <result property="body"         column="body"/>
+        <result property="createdAt"    column="created_at"/>
+        <result property="updatedAt"    column="updated_at"/>
+        <result property="likeCount"    column="like_count"/>
+        <result property="commentCount" column="comment_count"/>
+        <result property="likedByMe"    column="liked_by_me"/>
         <association property="author" javaType="com.example.mytimeline.model.User">
             <id     property="id"          column="author_id"/>
             <result property="username"    column="author_username"/>
@@ -26,10 +29,17 @@
     </resultMap>
 
     <!--
-      投稿取得はどこでも投稿者名を必要とするため、この JOIN を共通化している。
+      投稿取得はどこでも投稿者名といいね数・コメント数を必要とするため、この列リストを共通化している。
       password_hash / email は画面に出さないので取得しない。
+
+      集計をスカラーサブクエリで書いているのは、これが「返す行の分しか評価されない」ため。
+      LEFT JOIN (SELECT post_id, COUNT(*) ... GROUP BY post_id) と書くと、
+      1 ページ 20 件しか返さないのに likes / comments を全件集計してから結合することになり、
+      テーブルが育つほど遅くなる。
+      like_count と liked_by_me はどちらも likes の UNIQUE (post_id, user_id) を、
+      comment_count は idx_comments_post_id (post_id, id) を引くだけで済む。
     -->
-    <sql id="selectPostWithAuthor">
+    <sql id="postSelectList">
         SELECT
             p.id,
             p.user_id,
@@ -40,9 +50,13 @@
             u.username     AS author_username,
             u.display_name AS author_display_name,
             u.bio          AS author_bio,
-            u.created_at   AS author_created_at
-        FROM posts p
-        JOIN users u ON u.id = p.user_id
+            u.created_at   AS author_created_at,
+            (SELECT COUNT(*) FROM likes    l WHERE l.post_id = p.id) AS like_count,
+            (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comment_count,
+            EXISTS (
+                SELECT 1 FROM likes l
+                WHERE l.post_id = p.id AND l.user_id = #{currentUserId}
+            ) AS liked_by_me
     </sql>
 
     <insert id="insert" parameterType="com.example.mytimeline.model.Post"
@@ -51,40 +65,59 @@
         VALUES (#{userId}, #{body})
     </insert>
 
+    <!-- 1 件だけなので派生テーブルは要らない。集計サブクエリもその 1 行分しか走らない -->
     <select id="findById" resultMap="PostWithAuthor">
-        <include refid="selectPostWithAuthor"/>
+        <include refid="postSelectList"/>
+        FROM posts p
+        JOIN users u ON u.id = p.user_id
         WHERE p.id = #{id}
+    </select>
+
+    <!-- 存在確認だけの軽量版。集計サブクエリを含む findById を使うと無駄に likes / comments を読む -->
+    <select id="existsById" resultType="boolean">
+        SELECT EXISTS (SELECT 1 FROM posts WHERE id = #{id})
     </select>
 
     <!--
       新しい順の並びは id の降順で表現する。id は BIGSERIAL で単調増加するため
       created_at の降順と一致し、同時刻の投稿でも順序が一意に定まる。
       カーソルも同じ理由で「最後に見た投稿の id」をそのまま使える。
+
+      投稿の絞り込みと LIMIT は派生テーブルの中で先に済ませている。
+      これが「集計を全投稿に対して走らせない」ための境界で、外側の集計サブクエリは
+      返す 1 ページ分（既定 20・上限 50 件）しか評価されない。
+      投稿が何万件に増えても 1 ページあたりの仕事量は変わらず、クエリも 1 本のまま。
     -->
     <select id="findTimeline" resultMap="PostWithAuthor">
-        <include refid="selectPostWithAuthor"/>
-        <where>
-            <!-- userIds が null なら絞り込まない（全体タイムライン）。
-                 空リストは「対象ユーザーが 0 人」なので 0 件を返す -->
-            <if test="userIds != null">
-                <choose>
-                    <when test="userIds.isEmpty()">
-                        AND 1 = 0
-                    </when>
-                    <otherwise>
-                        AND p.user_id IN
-                        <foreach item="userId" collection="userIds" open="(" separator="," close=")">
-                            #{userId}
-                        </foreach>
-                    </otherwise>
-                </choose>
-            </if>
-            <if test="cursor != null">
-                AND p.id &lt; #{cursor}
-            </if>
-        </where>
+        <include refid="postSelectList"/>
+        FROM (
+            SELECT id, user_id, body, created_at, updated_at
+            FROM posts
+            <where>
+                <!-- userIds が null なら絞り込まない（全体タイムライン）。
+                     空リストは「対象ユーザーが 0 人」なので 0 件を返す -->
+                <if test="userIds != null">
+                    <choose>
+                        <when test="userIds.isEmpty()">
+                            AND 1 = 0
+                        </when>
+                        <otherwise>
+                            AND user_id IN
+                            <foreach item="userId" collection="userIds" open="(" separator="," close=")">
+                                #{userId}
+                            </foreach>
+                        </otherwise>
+                    </choose>
+                </if>
+                <if test="cursor != null">
+                    AND id &lt; #{cursor}
+                </if>
+            </where>
+            ORDER BY id DESC
+            LIMIT #{limit}
+        ) p
+        JOIN users u ON u.id = p.user_id
         ORDER BY p.id DESC
-        LIMIT #{limit}
     </select>
 
     <update id="updateBody">

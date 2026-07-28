@@ -79,7 +79,7 @@ class PostServiceTest {
             invocation.getArgument(0, Post.class).setId(10L);
             return null;
         }).when(postMapper).insert(any(Post.class));
-        when(postMapper.findById(10L)).thenReturn(Optional.of(post(10L, OWNER_ID, "こんにちは")));
+        when(postMapper.findById(10L, OWNER_ID)).thenReturn(Optional.of(post(10L, OWNER_ID, "こんにちは")));
 
         PostResponse response = postService.create(OWNER_ID, new PostRequest("こんにちは"));
 
@@ -96,17 +96,34 @@ class PostServiceTest {
     @Test
     @DisplayName("存在しない投稿の取得は 404 相当の例外になる")
     void getByIdThrowsWhenMissing() {
-        when(postMapper.findById(999L)).thenReturn(Optional.empty());
+        when(postMapper.findById(999L, OWNER_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> postService.getById(999L))
+        assertThatThrownBy(() -> postService.getById(999L, OWNER_ID))
             .isInstanceOf(PostNotFoundException.class)
             .hasMessage(PostNotFoundException.MESSAGE);
     }
 
     @Test
+    @DisplayName("いいね数・コメント数・自分のいいね状態はレスポンスにそのまま載る")
+    void getByIdCarriesAggregatesIntoResponse() {
+        // 数え直さず、マッパーが 1 本の SQL で埋めてきた値をそのまま返す（N+1 回避）
+        Post post = post(10L, OWNER_ID, "本文");
+        post.setLikeCount(3L);
+        post.setCommentCount(2L);
+        post.setLikedByMe(true);
+        when(postMapper.findById(10L, OTHER_USER_ID)).thenReturn(Optional.of(post));
+
+        PostResponse response = postService.getById(10L, OTHER_USER_ID);
+
+        assertThat(response.likeCount()).isEqualTo(3L);
+        assertThat(response.commentCount()).isEqualTo(2L);
+        assertThat(response.likedByMe()).isTrue();
+    }
+
+    @Test
     @DisplayName("自分の投稿は編集できる")
     void updateSucceedsForOwner() {
-        when(postMapper.findById(10L))
+        when(postMapper.findById(10L, OWNER_ID))
             .thenReturn(Optional.of(post(10L, OWNER_ID, "編集前")))
             .thenReturn(Optional.of(post(10L, OWNER_ID, "編集後")));
 
@@ -119,7 +136,7 @@ class PostServiceTest {
     @Test
     @DisplayName("他人の投稿は編集できず、UPDATE も実行されない")
     void updateThrowsForNonOwner() {
-        when(postMapper.findById(10L)).thenReturn(Optional.of(post(10L, OWNER_ID, "本文")));
+        when(postMapper.findById(10L, OTHER_USER_ID)).thenReturn(Optional.of(post(10L, OWNER_ID, "本文")));
 
         assertThatThrownBy(() -> postService.update(10L, OTHER_USER_ID, new PostRequest("書き換え")))
             .isInstanceOf(PostForbiddenException.class)
@@ -131,7 +148,7 @@ class PostServiceTest {
     @Test
     @DisplayName("存在しない投稿の編集は 403 ではなく 404 相当になる")
     void updateThrowsNotFoundBeforeForbidden() {
-        when(postMapper.findById(999L)).thenReturn(Optional.empty());
+        when(postMapper.findById(999L, OTHER_USER_ID)).thenReturn(Optional.empty());
 
         // 先に 403 を返すと「その id の投稿が他人のものとして存在する」ことが漏れる
         assertThatThrownBy(() -> postService.update(999L, OTHER_USER_ID, new PostRequest("本文")))
@@ -141,7 +158,7 @@ class PostServiceTest {
     @Test
     @DisplayName("自分の投稿は削除できる")
     void deleteSucceedsForOwner() {
-        when(postMapper.findById(10L)).thenReturn(Optional.of(post(10L, OWNER_ID, "本文")));
+        when(postMapper.findById(10L, OWNER_ID)).thenReturn(Optional.of(post(10L, OWNER_ID, "本文")));
 
         postService.delete(10L, OWNER_ID);
 
@@ -151,7 +168,7 @@ class PostServiceTest {
     @Test
     @DisplayName("他人の投稿は削除できず、DELETE も実行されない")
     void deleteThrowsForNonOwner() {
-        when(postMapper.findById(10L)).thenReturn(Optional.of(post(10L, OWNER_ID, "本文")));
+        when(postMapper.findById(10L, OTHER_USER_ID)).thenReturn(Optional.of(post(10L, OWNER_ID, "本文")));
 
         assertThatThrownBy(() -> postService.delete(10L, OTHER_USER_ID))
             .isInstanceOf(PostForbiddenException.class);
@@ -162,10 +179,10 @@ class PostServiceTest {
     @Test
     @DisplayName("limit 未指定なら既定件数で取得する")
     void timelineUsesDefaultLimit() {
-        when(postMapper.findTimeline(isNull(), isNull(), eq(PostService.DEFAULT_LIMIT + 1)))
+        when(postMapper.findTimeline(isNull(), isNull(), eq(PostService.DEFAULT_LIMIT + 1), eq(OWNER_ID)))
             .thenReturn(posts(3));
 
-        TimelineResponse response = postService.getAllTimeline(null, null);
+        TimelineResponse response = postService.getAllTimeline(OWNER_ID, null, null);
 
         assertThat(response.posts()).hasSize(3);
     }
@@ -173,32 +190,32 @@ class PostServiceTest {
     @Test
     @DisplayName("limit が上限を超えても上限までしか取得しない")
     void timelineClampsLimitToMax() {
-        when(postMapper.findTimeline(isNull(), isNull(), eq(PostService.MAX_LIMIT + 1)))
+        when(postMapper.findTimeline(isNull(), isNull(), eq(PostService.MAX_LIMIT + 1), eq(OWNER_ID)))
             .thenReturn(posts(5));
 
-        postService.getAllTimeline(null, 1000);
+        postService.getAllTimeline(OWNER_ID, null, 1000);
 
-        verify(postMapper).findTimeline(null, null, PostService.MAX_LIMIT + 1);
+        verify(postMapper).findTimeline(null, null, PostService.MAX_LIMIT + 1, OWNER_ID);
     }
 
     @Test
     @DisplayName("limit が 0 以下なら既定件数に戻す")
     void timelineFallsBackToDefaultForNonPositiveLimit() {
-        when(postMapper.findTimeline(isNull(), isNull(), eq(PostService.DEFAULT_LIMIT + 1)))
+        when(postMapper.findTimeline(isNull(), isNull(), eq(PostService.DEFAULT_LIMIT + 1), eq(OWNER_ID)))
             .thenReturn(posts(1));
 
-        postService.getAllTimeline(null, 0);
+        postService.getAllTimeline(OWNER_ID, null, 0);
 
-        verify(postMapper).findTimeline(null, null, PostService.DEFAULT_LIMIT + 1);
+        verify(postMapper).findTimeline(null, null, PostService.DEFAULT_LIMIT + 1, OWNER_ID);
     }
 
     @Test
     @DisplayName("要求件数より多く返ったら余りを捨て、最後の投稿の id を次のカーソルにする")
     void timelineReturnsNextCursorWhenMoreExist() {
         // limit=2 に対し 3 件（= limit + 1）返るので次ページがある
-        when(postMapper.findTimeline(isNull(), isNull(), eq(3))).thenReturn(posts(3));
+        when(postMapper.findTimeline(isNull(), isNull(), eq(3), eq(OWNER_ID))).thenReturn(posts(3));
 
-        TimelineResponse response = postService.getAllTimeline(null, 2);
+        TimelineResponse response = postService.getAllTimeline(OWNER_ID, null, 2);
 
         assertThat(response.posts()).hasSize(2);
         assertThat(response.posts()).extracting(PostResponse::id).containsExactly(100L, 99L);
@@ -208,9 +225,9 @@ class PostServiceTest {
     @Test
     @DisplayName("要求件数以下しか返らなければ次のカーソルは null になる")
     void timelineReturnsNullCursorWhenNoMore() {
-        when(postMapper.findTimeline(isNull(), isNull(), eq(3))).thenReturn(posts(2));
+        when(postMapper.findTimeline(isNull(), isNull(), eq(3), eq(OWNER_ID))).thenReturn(posts(2));
 
-        TimelineResponse response = postService.getAllTimeline(null, 2);
+        TimelineResponse response = postService.getAllTimeline(OWNER_ID, null, 2);
 
         assertThat(response.posts()).hasSize(2);
         assertThat(response.nextCursor()).isNull();
@@ -219,9 +236,9 @@ class PostServiceTest {
     @Test
     @DisplayName("0 件でも例外にならず空のタイムラインを返す")
     void timelineReturnsEmpty() {
-        when(postMapper.findTimeline(isNull(), isNull(), eq(3))).thenReturn(List.of());
+        when(postMapper.findTimeline(isNull(), isNull(), eq(3), eq(OWNER_ID))).thenReturn(List.of());
 
-        TimelineResponse response = postService.getAllTimeline(null, 2);
+        TimelineResponse response = postService.getAllTimeline(OWNER_ID, null, 2);
 
         assertThat(response.posts()).isEmpty();
         assertThat(response.nextCursor()).isNull();
@@ -231,22 +248,37 @@ class PostServiceTest {
     @DisplayName("フォロー中タイムラインは現状ログインユーザー自身のみを対象にする")
     void followingTimelineTargetsSelfOnly() {
         // follows テーブルは F06 で追加する。それまでは自分の投稿だけが対象
-        when(postMapper.findTimeline(eq(List.of(OWNER_ID)), isNull(), eq(PostService.DEFAULT_LIMIT + 1)))
+        when(postMapper.findTimeline(
+            eq(List.of(OWNER_ID)), isNull(), eq(PostService.DEFAULT_LIMIT + 1), eq(OWNER_ID)))
             .thenReturn(posts(1));
 
         postService.getFollowingTimeline(OWNER_ID, null, null);
 
-        verify(postMapper).findTimeline(List.of(OWNER_ID), null, PostService.DEFAULT_LIMIT + 1);
+        verify(postMapper).findTimeline(List.of(OWNER_ID), null, PostService.DEFAULT_LIMIT + 1, OWNER_ID);
     }
 
     @Test
     @DisplayName("カーソルはそのままマッパーへ渡される")
     void timelinePassesCursorThrough() {
-        when(postMapper.findTimeline(isNull(), eq(50L), eq(PostService.DEFAULT_LIMIT + 1)))
+        when(postMapper.findTimeline(isNull(), eq(50L), eq(PostService.DEFAULT_LIMIT + 1), eq(OWNER_ID)))
             .thenReturn(posts(1));
 
-        postService.getAllTimeline(50L, null);
+        postService.getAllTimeline(OWNER_ID, 50L, null);
 
-        verify(postMapper).findTimeline(null, 50L, PostService.DEFAULT_LIMIT + 1);
+        verify(postMapper).findTimeline(null, 50L, PostService.DEFAULT_LIMIT + 1, OWNER_ID);
+    }
+
+    @Test
+    @DisplayName("タイムラインの件数によらずマッパーの呼び出しは 1 回だけ（N+1 を作らない）")
+    void timelineIssuesSingleMapperCall() {
+        // 投稿ごとに件数を数え直す実装になっていないことの歯止め。
+        // いいね数・コメント数・自分のいいね状態は findTimeline が同じ SQL で埋めてくる
+        when(postMapper.findTimeline(isNull(), isNull(), eq(PostService.DEFAULT_LIMIT + 1), eq(OWNER_ID)))
+            .thenReturn(posts(20));
+
+        postService.getAllTimeline(OWNER_ID, null, null);
+
+        verify(postMapper).findTimeline(null, null, PostService.DEFAULT_LIMIT + 1, OWNER_ID);
+        verify(postMapper, never()).findById(any(), any());
     }
 }

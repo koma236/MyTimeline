@@ -1,5 +1,6 @@
 import { apiClient } from './client'
 import type {
+  LikeResponse,
   PostRequest,
   PostResponse,
   TimelineResponse,
@@ -47,5 +48,22 @@ export async function fetchTimeline(
   const response = await apiClient.get<TimelineResponse>(`/timeline/${tab}`, {
     params: cursor == null ? undefined : { cursor },
   })
+  return response.data
+}
+
+/**
+ * いいねを付ける（F05）。
+ *
+ * トグルではなく付与と取り消しで分かれているので、何度呼んでも結果は同じ（冪等）。
+ * 戻り値の likeCount / likedByMe をそのままボタンの表示に使える。
+ */
+export async function likePost(id: number): Promise<LikeResponse> {
+  const response = await apiClient.post<LikeResponse>(`/posts/${id}/like`)
+  return response.data
+}
+
+/** いいねを取り消す。付いていない状態で呼んでもエラーにはならない。 */
+export async function unlikePost(id: number): Promise<LikeResponse> {
+  const response = await apiClient.delete<LikeResponse>(`/posts/${id}/like`)
   return response.data
 }

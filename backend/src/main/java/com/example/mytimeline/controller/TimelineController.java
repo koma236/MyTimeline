@@ -37,12 +37,18 @@ public class TimelineController {
         return ResponseEntity.ok(postService.getFollowingTimeline(currentUser.id(), cursor, limit));
     }
 
-    /** 全体タイムライン。 */
+    /**
+     * 全体タイムライン。
+     *
+     * <p>絞り込みにログインユーザーは使わないが、各投稿の {@code likedByMe}
+     * （自分がいいね済みか）を判定するために principal を受け取る。</p>
+     */
     @GetMapping("/all")
     public ResponseEntity<TimelineResponse> all(
+        @AuthenticationPrincipal CurrentUser currentUser,
         @RequestParam(required = false) Long cursor,
         @RequestParam(required = false) Integer limit
     ) {
-        return ResponseEntity.ok(postService.getAllTimeline(cursor, limit));
+        return ResponseEntity.ok(postService.getAllTimeline(currentUser.id(), cursor, limit));
     }
 }

@@ -52,6 +52,9 @@ class TimelineControllerTest {
             10L,
             "こんにちは",
             new PostAuthor(CURRENT_USER_ID, "taro", "山田太郎"),
+            5L,
+            1L,
+            false,
             LocalDateTime.now(),
             LocalDateTime.now()
         );
@@ -61,7 +64,7 @@ class TimelineControllerTest {
     @Test
     @DisplayName("全体タイムラインは投稿と次のカーソルを返す")
     void allReturnsTimeline() throws Exception {
-        when(postService.getAllTimeline(null, null)).thenReturn(timeline(9L));
+        when(postService.getAllTimeline(CURRENT_USER_ID, null, null)).thenReturn(timeline(9L));
 
         mockMvc.perform(get("/api/timeline/all").header("Authorization", "Bearer " + VALID_TOKEN))
             .andExpect(status().isOk())
@@ -71,9 +74,21 @@ class TimelineControllerTest {
     }
 
     @Test
+    @DisplayName("全体タイムラインの各投稿にいいね数・コメント数・自分のいいね状態が載る")
+    void allReturnsCounts() throws Exception {
+        when(postService.getAllTimeline(CURRENT_USER_ID, null, null)).thenReturn(timeline(null));
+
+        mockMvc.perform(get("/api/timeline/all").header("Authorization", "Bearer " + VALID_TOKEN))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.posts[0].likeCount").value(5))
+            .andExpect(jsonPath("$.posts[0].commentCount").value(1))
+            .andExpect(jsonPath("$.posts[0].likedByMe").value(false));
+    }
+
+    @Test
     @DisplayName("cursor と limit はそのままサービスへ渡される")
     void allPassesCursorAndLimit() throws Exception {
-        when(postService.getAllTimeline(50L, 10)).thenReturn(timeline(null));
+        when(postService.getAllTimeline(CURRENT_USER_ID, 50L, 10)).thenReturn(timeline(null));
 
         mockMvc.perform(get("/api/timeline/all")
                 .param("cursor", "50")
@@ -81,13 +96,13 @@ class TimelineControllerTest {
                 .header("Authorization", "Bearer " + VALID_TOKEN))
             .andExpect(status().isOk());
 
-        verify(postService).getAllTimeline(50L, 10);
+        verify(postService).getAllTimeline(CURRENT_USER_ID, 50L, 10);
     }
 
     @Test
     @DisplayName("最終ページでは nextCursor が null になる")
     void allReturnsNullCursorOnLastPage() throws Exception {
-        when(postService.getAllTimeline(null, null)).thenReturn(timeline(null));
+        when(postService.getAllTimeline(CURRENT_USER_ID, null, null)).thenReturn(timeline(null));
 
         mockMvc.perform(get("/api/timeline/all").header("Authorization", "Bearer " + VALID_TOKEN))
             .andExpect(status().isOk())
