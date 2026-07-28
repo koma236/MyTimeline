@@ -1,57 +1,41 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { toApiError } from '../api/client'
 import { useAuth } from '../auth/useAuth'
-import type { PostResponse } from '../types/post'
+import type { CommentResponse } from '../types/comment'
 import { absoluteTime, relativeTime } from '../utils/relativeTime'
 import { Avatar } from './Avatar'
+import { COMMENT_BODY_MAX_LENGTH } from './CommentComposer'
 import { FormError } from './FormError'
-import { PostActions } from './PostActions'
-import { BODY_MAX_LENGTH } from './PostComposer'
 
-interface PostCardProps {
-  post: PostResponse
-  /** 投稿詳細（SCR-04）で使うと本文を大きくし、カード全体のリンクを外す */
-  detail?: boolean
+interface CommentCardProps {
+  comment: CommentResponse
   /** 編集を保存する。省略すると編集メニューを出さない */
-  onUpdate?: (id: number, body: string) => Promise<PostResponse>
+  onUpdate?: (id: number, body: string) => Promise<CommentResponse>
   /** 削除する。省略すると削除メニューを出さない */
   onDelete?: (id: number) => Promise<void>
-  /**
-   * いいねを切り替える。省略するといいねボタンを押せなくする。
-   *
-   * onUpdate / onDelete と同じく、API 呼び出しと一覧への反映は呼び出し側の責務。
-   * このカードは表示と操作の受け付けだけを担う。
-   */
-  onToggleLike?: (post: PostResponse) => Promise<void>
 }
 
 /**
- * 投稿カード（mock/css/style.css の .post 相当・SCR-03 / SCR-04）。
+ * コメント 1 件（mock/css/style.css の .comment 相当・SCR-04）。
  *
- * 編集は別画面へ遷移せず、カード内で本文を textarea に差し替える。
- * 操作メニューは自分の投稿にのみ表示するが、これは表示上の配慮であって
- * 認可そのものはサーバー側（PostService の所有者チェック）が担保している。
+ * PostCard と同じ作り。X ではリプライもポストの一種で編集の可否が投稿と同じなので、
+ * こちらも本人なら編集・削除の両方ができる。
+ * 操作メニューを自分のコメントにのみ表示するのは表示上の配慮であって、
+ * 認可そのものはサーバー側（CommentService の所有者チェック）が担保している。
  */
-export function PostCard({
-  post,
-  detail = false,
-  onUpdate,
-  onDelete,
-  onToggleLike,
-}: PostCardProps) {
+export function CommentCard({ comment, onUpdate, onDelete }: CommentCardProps) {
   const { user } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
   const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(post.body)
+  const [draft, setDraft] = useState(comment.body)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | undefined>()
   const menuRef = useRef<HTMLDivElement>(null)
 
-  const isMine = user?.id === post.author.id
+  const isMine = user?.id === comment.author.id
   const canEdit = isMine && onUpdate !== undefined
   const canDelete = isMine && onDelete !== undefined
-  const remaining = BODY_MAX_LENGTH - [...draft].length
+  const remaining = COMMENT_BODY_MAX_LENGTH - [...draft].length
   const canSave = draft.trim().length > 0 && remaining >= 0 && !pending
 
   // メニューを開いたまま他所をクリックしたら閉じる
@@ -66,7 +50,7 @@ export function PostCard({
 
   const startEditing = () => {
     setMenuOpen(false)
-    setDraft(post.body)
+    setDraft(comment.body)
     setError(undefined)
     setEditing(true)
   }
@@ -78,7 +62,7 @@ export function PostCard({
     setPending(true)
     setError(undefined)
     try {
-      await onUpdate(post.id, draft)
+      await onUpdate(comment.id, draft)
       setEditing(false)
     } catch (caught) {
       setError(toApiError(caught).message)
@@ -89,12 +73,12 @@ export function PostCard({
 
   const handleDelete = async () => {
     setMenuOpen(false)
-    if (!onDelete || !window.confirm('この投稿を削除しますか？')) return
+    if (!onDelete || !window.confirm('このコメントを削除しますか？')) return
 
     setPending(true)
     setError(undefined)
     try {
-      await onDelete(post.id)
+      await onDelete(comment.id)
     } catch (caught) {
       setError(toApiError(caught).message)
       setPending(false)
@@ -104,28 +88,22 @@ export function PostCard({
 
   return (
     <article className="flex gap-3 border-b border-border px-4 py-3">
-      <Avatar username={post.author.username} displayName={post.author.displayName} large={detail} />
+      <Avatar username={comment.author.username} displayName={comment.author.displayName} />
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <span className="truncate font-bold">{post.author.displayName}</span>
-          <span className="truncate text-sm text-muted">@{post.author.username}</span>
+          <span className="truncate font-bold">{comment.author.displayName}</span>
+          <span className="truncate text-sm text-muted">@{comment.author.username}</span>
           <span className="text-sm text-muted">・</span>
-          {detail ? (
-            <time dateTime={post.createdAt} className="text-sm text-muted">
-              {relativeTime(post.createdAt)}
-            </time>
-          ) : (
-            <Link
-              to={`/posts/${post.id}`}
-              title={absoluteTime(post.createdAt)}
-              className="text-sm text-muted hover:underline"
-            >
-              <time dateTime={post.createdAt}>{relativeTime(post.createdAt)}</time>
-            </Link>
-          )}
-          {post.updatedAt !== post.createdAt && (
-            <span className="text-sm text-muted" title={absoluteTime(post.updatedAt)}>
+          <time
+            dateTime={comment.createdAt}
+            title={absoluteTime(comment.createdAt)}
+            className="text-sm text-muted"
+          >
+            {relativeTime(comment.createdAt)}
+          </time>
+          {comment.updatedAt !== comment.createdAt && (
+            <span className="text-sm text-muted" title={absoluteTime(comment.updatedAt)}>
               （編集済み）
             </span>
           )}
@@ -135,7 +113,7 @@ export function PostCard({
               <button
                 type="button"
                 onClick={() => setMenuOpen((open) => !open)}
-                aria-label="投稿メニュー"
+                aria-label="コメントメニュー"
                 aria-expanded={menuOpen}
                 disabled={pending}
                 className="rounded-full px-2 py-0.5 text-muted transition-colors hover:bg-accent/10 hover:text-accent disabled:opacity-50"
@@ -177,11 +155,10 @@ export function PostCard({
               onChange={(event) => setDraft(event.target.value)}
               rows={3}
               // 「編集」を選んだ直後にだけ描画される textarea なので、
-              // ページ読み込み時に勝手にフォーカスを奪う no-autofocus の懸念には当たらない。
-              // むしろここでフォーカスしないと、編集を選んでから手で入力欄を探すことになる
+              // ページ読み込み時に勝手にフォーカスを奪う no-autofocus の懸念には当たらない
               // eslint-disable-next-line jsx-a11y/no-autofocus
               autoFocus
-              aria-label="投稿の本文を編集"
+              aria-label="コメントの本文を編集"
               className="w-full resize-none rounded-lg border border-border-strong bg-bg px-3 py-2 text-[15px] text-text outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
             />
             <div className="mt-1 flex items-center justify-end gap-3">
@@ -205,13 +182,8 @@ export function PostCard({
             </div>
           </form>
         ) : (
-          <p className={`mt-0.5 whitespace-pre-wrap break-words ${detail ? 'text-xl' : ''}`}>
-            {post.body}
-          </p>
+          <p className="mt-0.5 whitespace-pre-wrap break-words">{comment.body}</p>
         )}
-
-        {/* 編集中は操作列を隠す。編集の保存・キャンセルと並ぶと押し間違えやすい */}
-        {!editing && <PostActions post={post} onToggleLike={onToggleLike} detail={detail} />}
       </div>
     </article>
   )

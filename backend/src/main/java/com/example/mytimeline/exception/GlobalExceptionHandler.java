@@ -111,6 +111,24 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 対象のコメントが存在しない → 404。
+     */
+    @ExceptionHandler(CommentNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCommentNotFound(CommentNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(ErrorResponse.of(e.getMessage()));
+    }
+
+    /**
+     * 他人のコメントへの編集・削除 → 403。
+     */
+    @ExceptionHandler(CommentForbiddenException.class)
+    public ResponseEntity<ErrorResponse> handleCommentForbidden(CommentForbiddenException e) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+            .body(ErrorResponse.of(e.getMessage()));
+    }
+
+    /**
      * 壊れた JSON・型の合わないパス変数 / クエリ → 400。
      *
      * <p>例: {@code /api/posts/abc}（id が数値でない）、本文が JSON として解釈できない。

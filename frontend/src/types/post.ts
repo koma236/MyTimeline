@@ -14,9 +14,25 @@ export interface PostResponse {
   id: number
   body: string
   author: PostAuthor
+  /** いいね数（F05） */
+  likeCount: number
+  /** コメント数（F04） */
+  commentCount: number
+  /**
+   * ログインユーザーがこの投稿にいいね済みか。
+   *
+   * 「自分の投稿か」は author.id との比較で分かるが、これは分からないのでサーバーが返す。
+   */
+  likedByMe: boolean
   /** LocalDateTime のためタイムゾーンを持たない ISO 文字列 */
   createdAt: string
   updatedAt: string
+}
+
+/** いいねの付与・取り消し後の状態（POST / DELETE /api/posts/{id}/like のレスポンス） */
+export interface LikeResponse {
+  likeCount: number
+  likedByMe: boolean
 }
 
 /** 投稿の作成・編集で送る内容。どちらも本文だけなので共用する */

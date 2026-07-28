@@ -65,6 +65,9 @@ class PostControllerTest {
             10L,
             body,
             new PostAuthor(CURRENT_USER_ID, "taro", "山田太郎"),
+            3L,
+            2L,
+            true,
             LocalDateTime.now(),
             LocalDateTime.now()
         );
@@ -136,19 +139,22 @@ class PostControllerTest {
     }
 
     @Test
-    @DisplayName("投稿詳細の取得は 200 で投稿を返す")
+    @DisplayName("投稿詳細の取得は 200 でいいね数・コメント数付きの投稿を返す")
     void getByIdReturnsPost() throws Exception {
-        when(postService.getById(10L)).thenReturn(postResponse("こんにちは"));
+        when(postService.getById(10L, CURRENT_USER_ID)).thenReturn(postResponse("こんにちは"));
 
         mockMvc.perform(get("/api/posts/10").header("Authorization", "Bearer " + VALID_TOKEN))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.body").value("こんにちは"));
+            .andExpect(jsonPath("$.body").value("こんにちは"))
+            .andExpect(jsonPath("$.likeCount").value(3))
+            .andExpect(jsonPath("$.commentCount").value(2))
+            .andExpect(jsonPath("$.likedByMe").value(true));
     }
 
     @Test
     @DisplayName("存在しない投稿の取得は 404 になる")
     void getByIdReturnsNotFound() throws Exception {
-        when(postService.getById(999L)).thenThrow(new PostNotFoundException());
+        when(postService.getById(999L, CURRENT_USER_ID)).thenThrow(new PostNotFoundException());
 
         mockMvc.perform(get("/api/posts/999").header("Authorization", "Bearer " + VALID_TOKEN))
             .andExpect(status().isNotFound())

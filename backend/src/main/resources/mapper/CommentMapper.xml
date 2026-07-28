@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.mytimeline.mapper.CommentMapper">
+
+    <!--
+      コメントと投稿者をまとめて 1 オブジェクトに詰める。
+      PostMapper.xml と同じく、コメントごとにユーザーを引き直す N+1 を避けるため
+      association は別クエリ（select 属性）ではなく JOIN 済みの列から組み立てている。
+      users の列は別名を付けて comments の同名列（id / created_at）との衝突を避ける。
+    -->
+    <resultMap id="CommentWithAuthor" type="com.example.mytimeline.model.Comment">
+        <id     property="id"        column="id"/>
+        <result property="postId"    column="post_id"/>
+        <result property="userId"    column="user_id"/>
+        <result property="body"      column="body"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <association property="author" javaType="com.example.mytimeline.model.User">
+            <id     property="id"          column="author_id"/>
+            <result property="username"    column="author_username"/>
+            <result property="displayName" column="author_display_name"/>
+            <result property="bio"         column="author_bio"/>
+            <result property="createdAt"   column="author_created_at"/>
+        </association>
+    </resultMap>
+
+    <!-- コメント取得はどこでも投稿者名を必要とするため、この JOIN を共通化している -->
+    <sql id="selectCommentWithAuthor">
+        SELECT
+            c.id,
+            c.post_id,
+            c.user_id,
+            c.body,
+            c.created_at,
+            c.updated_at,
+            u.id           AS author_id,
+            u.username     AS author_username,
+            u.display_name AS author_display_name,
+            u.bio          AS author_bio,
+            u.created_at   AS author_created_at
+        FROM comments c
+        JOIN users u ON u.id = c.user_id
+    </sql>
+
+    <insert id="insert" parameterType="com.example.mytimeline.model.Comment"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO comments (post_id, user_id, body)
+        VALUES (#{postId}, #{userId}, #{body})
+    </insert>
+
+    <select id="findById" resultMap="CommentWithAuthor">
+        <include refid="selectCommentWithAuthor"/>
+        WHERE c.id = #{id}
+    </select>
+
+    <!--
+      並びは古い順（id の昇順）。会話は上から下へ読むものなので、投稿本体の下に
+      古い順で積む方が自然で、後から来たコメントで既読部分の位置がずれない。
+      id は BIGSERIAL で単調増加するため created_at の昇順と一致し、
+      同時刻のコメントでも順序が一意に定まる。
+
+      新しい順のタイムラインと違い、カーソルは「最後に読んだコメントの id」より
+      大きいものを取る（続きは未来方向にある）。
+      idx_comments_post_id (post_id, id) がこの絞り込みと並び替えの両方を賄う。
+    -->
+    <select id="findByPostId" resultMap="CommentWithAuthor">
+        <include refid="selectCommentWithAuthor"/>
+        WHERE c.post_id = #{postId}
+        <if test="cursor != null">
+            AND c.id &gt; #{cursor}
+        </if>
+        ORDER BY c.id ASC
+        LIMIT #{limit}
+    </select>
+
+    <update id="updateBody">
+        UPDATE comments
+        SET body = #{body},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM comments WHERE id = #{id}
+    </delete>
+
+</mapper>
