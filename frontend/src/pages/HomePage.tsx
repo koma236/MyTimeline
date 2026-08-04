@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { Link } from 'react-router-dom'
 import * as postsApi from '../api/posts'
 import { FormError } from '../components/FormError'
 import { InfiniteScrollSentinel } from '../components/InfiniteScrollSentinel'
@@ -86,11 +87,19 @@ export function HomePage() {
       )}
 
       {isEmpty && (
-        <p className="px-4 py-16 text-center text-sm text-muted">
-          {tab === 'following'
-            ? 'まだ投稿がありません。最初の投稿をしてみましょう。'
-            : 'まだ誰も投稿していません。'}
-        </p>
+        <div className="px-4 py-16 text-center text-sm text-muted">
+          {tab === 'following' ? (
+            <>
+              <p>まだ投稿がありません。最初の投稿をしてみましょう。</p>
+              {/* UC-04 の代替フロー。フォロー中が空なら、まず相手を見つける導線を出す */}
+              <Link to="/search" className="mt-2 inline-block font-bold text-accent hover:underline">
+                ユーザーを検索してフォローする
+              </Link>
+            </>
+          ) : (
+            <p>まだ誰も投稿していません。</p>
+          )}
+        </div>
       )}
 
       {posts.map((post) => (

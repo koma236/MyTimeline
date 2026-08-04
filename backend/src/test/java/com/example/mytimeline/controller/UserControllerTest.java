@@ -2,6 +2,8 @@ package com.example.mytimeline.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -14,12 +16,15 @@ import com.example.mytimeline.config.SecurityConfig;
 import com.example.mytimeline.dto.ProfileResponse;
 import com.example.mytimeline.dto.UpdateProfileRequest;
 import com.example.mytimeline.dto.UserResponse;
+import com.example.mytimeline.dto.UserSearchResponse;
+import com.example.mytimeline.dto.UserSummary;
 import com.example.mytimeline.exception.ProfileNotFoundException;
 import com.example.mytimeline.security.CurrentUser;
 import com.example.mytimeline.security.JwtService;
 import com.example.mytimeline.service.UserService;
 import com.example.mytimeline.storage.InvalidImageException;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -69,7 +74,7 @@ class UserControllerTest {
     @Test
     @DisplayName("プロフィール取得は 200 でユーザー情報を返す")
     void getProfileReturnsUser() throws Exception {
-        when(userService.getProfile(USERNAME)).thenReturn(profileResponse());
+        when(userService.getProfile(USERNAME, CURRENT_USER_ID)).thenReturn(profileResponse());
 
         mockMvc.perform(get("/api/users/taro").header("Authorization", "Bearer " + VALID_TOKEN))
             .andExpect(status().isOk())
@@ -82,7 +87,7 @@ class UserControllerTest {
     @DisplayName("プロフィールにメールアドレスは含まれない")
     void getProfileDoesNotExposeEmail() throws Exception {
         // 他人のプロフィールは誰でも開けるので、UserResponse をそのまま返すと個人情報が漏れる
-        when(userService.getProfile(USERNAME)).thenReturn(profileResponse());
+        when(userService.getProfile(USERNAME, CURRENT_USER_ID)).thenReturn(profileResponse());
 
         mockMvc.perform(get("/api/users/taro").header("Authorization", "Bearer " + VALID_TOKEN))
             .andExpect(status().isOk())
@@ -92,11 +97,85 @@ class UserControllerTest {
     @Test
     @DisplayName("存在しないユーザーのプロフィールは 404 になる")
     void getProfileReturnsNotFound() throws Exception {
-        when(userService.getProfile("unknown")).thenThrow(new ProfileNotFoundException());
+        when(userService.getProfile("unknown", CURRENT_USER_ID)).thenThrow(new ProfileNotFoundException());
 
         mockMvc.perform(get("/api/users/unknown").header("Authorization", "Bearer " + VALID_TOKEN))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.message").value(ProfileNotFoundException.MESSAGE));
+    }
+
+    @Test
+    @DisplayName("プロフィールにフォロー中数・フォロワー数とフォロー状態が含まれる")
+    void getProfileIncludesFollowCounts() throws Exception {
+        when(userService.getProfile(USERNAME, CURRENT_USER_ID)).thenReturn(profileResponse());
+
+        mockMvc.perform(get("/api/users/taro").header("Authorization", "Bearer " + VALID_TOKEN))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.followingCount").value(45))
+            .andExpect(jsonPath("$.followerCount").value(120))
+            .andExpect(jsonPath("$.followingByMe").value(true));
+    }
+
+    @Test
+    @DisplayName("ユーザー検索は 200 で結果一覧と次カーソルを返す")
+    void searchReturnsUsers() throws Exception {
+        when(userService.searchUsers("taro", CURRENT_USER_ID, null, null))
+            .thenReturn(new UserSearchResponse(List.of(userSummary()), 5L));
+
+        mockMvc.perform(get("/api/users/search")
+                .param("q", "taro")
+                .header("Authorization", "Bearer " + VALID_TOKEN))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.users[0].username").value(USERNAME))
+            .andExpect(jsonPath("$.users[0].followingByMe").value(false))
+            .andExpect(jsonPath("$.nextCursor").value(5));
+    }
+
+    @Test
+    @DisplayName("検索結果にメールアドレスは含まれない")
+    void searchDoesNotExposeEmail() throws Exception {
+        when(userService.searchUsers("taro", CURRENT_USER_ID, null, null))
+            .thenReturn(new UserSearchResponse(List.of(userSummary()), null));
+
+        mockMvc.perform(get("/api/users/search")
+                .param("q", "taro")
+                .header("Authorization", "Bearer " + VALID_TOKEN))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.users[0].email").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("検索語が無くても 200 で新着ユーザーを返す")
+    void searchWithoutQueryIsAllowed() throws Exception {
+        when(userService.searchUsers(null, CURRENT_USER_ID, null, null))
+            .thenReturn(new UserSearchResponse(List.of(), null));
+
+        mockMvc.perform(get("/api/users/search").header("Authorization", "Bearer " + VALID_TOKEN))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.users").isEmpty());
+    }
+
+    @Test
+    @DisplayName("検索語が上限を超えると 400 になる")
+    void searchRejectsTooLongQuery() throws Exception {
+        mockMvc.perform(get("/api/users/search")
+                .param("q", "a".repeat(51))
+                .header("Authorization", "Bearer " + VALID_TOKEN))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("検索キーワードは50文字以内で入力してください"));
+    }
+
+    @Test
+    @DisplayName("/api/users/search はプロフィール取得ではなく検索として扱われる")
+    void searchTakesPrecedenceOverProfilePath() throws Exception {
+        // {username} のパターンとも一致するが、固定の文字列を含むパスが優先される
+        when(userService.searchUsers(null, CURRENT_USER_ID, null, null))
+            .thenReturn(new UserSearchResponse(List.of(), null));
+
+        mockMvc.perform(get("/api/users/search").header("Authorization", "Bearer " + VALID_TOKEN))
+            .andExpect(status().isOk());
+
+        verify(userService, never()).getProfile(eq("search"), any());
     }
 
     @Test
@@ -203,7 +282,14 @@ class UserControllerTest {
 
     private static ProfileResponse profileResponse() {
         return new ProfileResponse(
-            CURRENT_USER_ID, USERNAME, "山田太郎", "自己紹介", "https://example.com/signed", LocalDateTime.now()
+            CURRENT_USER_ID, USERNAME, "山田太郎", "自己紹介", "https://example.com/signed", LocalDateTime.now(),
+            45L, 120L, true
+        );
+    }
+
+    private static UserSummary userSummary() {
+        return new UserSummary(
+            2L, USERNAME, "山田太郎", "自己紹介", "https://example.com/signed", false
         );
     }
 

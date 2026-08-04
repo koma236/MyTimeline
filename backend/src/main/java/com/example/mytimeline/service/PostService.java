@@ -5,6 +5,7 @@ import com.example.mytimeline.dto.PostResponse;
 import com.example.mytimeline.dto.TimelineResponse;
 import com.example.mytimeline.exception.PostForbiddenException;
 import com.example.mytimeline.exception.PostNotFoundException;
+import com.example.mytimeline.mapper.FollowMapper;
 import com.example.mytimeline.mapper.PostMapper;
 import com.example.mytimeline.model.Post;
 import com.example.mytimeline.storage.AvatarUrlFactory;
@@ -37,10 +38,12 @@ public class PostService {
     static final int MAX_LIMIT = 50;
 
     private final PostMapper postMapper;
+    private final FollowMapper followMapper;
     private final AvatarUrlFactory avatarUrlFactory;
 
-    public PostService(PostMapper postMapper, AvatarUrlFactory avatarUrlFactory) {
+    public PostService(PostMapper postMapper, FollowMapper followMapper, AvatarUrlFactory avatarUrlFactory) {
         this.postMapper = postMapper;
+        this.followMapper = followMapper;
         this.avatarUrlFactory = avatarUrlFactory;
     }
 
@@ -104,13 +107,19 @@ public class PostService {
     /**
      * フォロー中タイムライン（F02「フォロー中」タブ）。
      *
-     * <p>本来は「自分＋自分がフォローしているユーザー」が対象だが、follows テーブルは
-     * F06（フォロー機能）で作るため、現状は自分の投稿だけを返す。F06 実装時に
-     * follows から取得した ID を足すだけで済むよう、マッパーは ID のリストを受ける形にしてある。</p>
+     * <p>対象は「自分＋自分がフォローしているユーザー」。自分を含めるのは、投稿した直後に
+     * それが見当たらないと投稿できたのかどうか分からないため（F02 / 04_features.md 5.2）。</p>
+     *
+     * <p>フォロー先の id を先に引いて {@code IN} に渡している。タイムラインの SQL に
+     * {@code follows} を JOIN する手もあるが、そうすると「自分の投稿も含める」条件が
+     * SQL 側に混ざる。フォロー数が数千規模になるまではこの形の方が読み解きやすい。</p>
      */
     @Transactional(readOnly = true)
     public TimelineResponse getFollowingTimeline(Long currentUserId, Long cursor, Integer limit) {
-        return toTimeline(List.of(currentUserId), cursor, limit, currentUserId);
+        List<Long> userIds = new ArrayList<>(followMapper.findFolloweeIds(currentUserId));
+        userIds.add(currentUserId);
+
+        return toTimeline(userIds, cursor, limit, currentUserId);
     }
 
     /**

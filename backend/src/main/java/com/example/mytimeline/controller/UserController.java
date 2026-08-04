@@ -4,9 +4,11 @@ import com.example.mytimeline.dto.ProfileResponse;
 import com.example.mytimeline.dto.TimelineResponse;
 import com.example.mytimeline.dto.UpdateProfileRequest;
 import com.example.mytimeline.dto.UserResponse;
+import com.example.mytimeline.dto.UserSearchResponse;
 import com.example.mytimeline.security.CurrentUser;
 import com.example.mytimeline.service.UserService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -35,15 +37,48 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 public class UserController {
 
+    /** 検索キーワードの上限（F06 6.）。長すぎる入力は部分一致の相手として意味を成さない。 */
+    private static final int MAX_QUERY_LENGTH = 50;
+
     private final UserService userService;
 
     public UserController(UserService userService) {
         this.userService = userService;
     }
 
+    /**
+     * ユーザー検索（SCR-06・F06）。
+     *
+     * <p>{@code /api/users/{username}} より先に評価される。Spring は変数を含むパターンより
+     * 固定の文字列を優先するため、並び順に関係なくこちらが選ばれる（その代わり
+     * {@code search} という username のプロフィールは開けなくなる）。</p>
+     *
+     * @param q 検索キーワード。未指定・空なら新着ユーザーを返す
+     */
+    @GetMapping("/api/users/search")
+    public ResponseEntity<UserSearchResponse> search(
+        @AuthenticationPrincipal CurrentUser currentUser,
+        @RequestParam(required = false)
+        @Size(max = MAX_QUERY_LENGTH, message = "検索キーワードは50文字以内で入力してください")
+        String q,
+        @RequestParam(required = false) Long cursor,
+        @RequestParam(required = false) Integer limit
+    ) {
+        return ResponseEntity.ok(userService.searchUsers(q, currentUser.id(), cursor, limit));
+    }
+
+    /**
+     * プロフィールを取得する。
+     *
+     * <p>フォロー済みかどうか（{@code followingByMe}）を埋めるためにログイン中ユーザーを受け取る。
+     * 見る人によって変わる値なので、対象ユーザーの情報だけでは決まらない。</p>
+     */
     @GetMapping("/api/users/{username}")
-    public ResponseEntity<ProfileResponse> getProfile(@PathVariable String username) {
-        return ResponseEntity.ok(userService.getProfile(username));
+    public ResponseEntity<ProfileResponse> getProfile(
+        @PathVariable String username,
+        @AuthenticationPrincipal CurrentUser currentUser
+    ) {
+        return ResponseEntity.ok(userService.getProfile(username, currentUser.id()));
     }
 
     /**

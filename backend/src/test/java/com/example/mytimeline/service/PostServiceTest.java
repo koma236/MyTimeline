@@ -15,6 +15,7 @@ import com.example.mytimeline.dto.PostResponse;
 import com.example.mytimeline.dto.TimelineResponse;
 import com.example.mytimeline.exception.PostForbiddenException;
 import com.example.mytimeline.exception.PostNotFoundException;
+import com.example.mytimeline.mapper.FollowMapper;
 import com.example.mytimeline.mapper.PostMapper;
 import com.example.mytimeline.model.Post;
 import com.example.mytimeline.model.User;
@@ -40,6 +41,9 @@ class PostServiceTest {
 
     @Mock
     private PostMapper postMapper;
+
+    @Mock
+    private FollowMapper followMapper;
 
     /**
      * アバター URL の組み立ては署名付き URL の発行を伴うためモックにする。
@@ -253,11 +257,24 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("フォロー中タイムラインは現状ログインユーザー自身のみを対象にする")
-    void followingTimelineTargetsSelfOnly() {
-        // follows テーブルは F06 で追加する。それまでは自分の投稿だけが対象
-        when(postMapper.findTimeline(
-            eq(List.of(OWNER_ID)), isNull(), eq(PostService.DEFAULT_LIMIT + 1), eq(OWNER_ID)))
+    @DisplayName("フォロー中タイムラインはフォロー先とログインユーザー自身を対象にする")
+    void followingTimelineTargetsFolloweesAndSelf() {
+        when(followMapper.findFolloweeIds(OWNER_ID)).thenReturn(List.of(OTHER_USER_ID, 3L));
+        when(postMapper.findTimeline(any(), isNull(), eq(PostService.DEFAULT_LIMIT + 1), eq(OWNER_ID)))
+            .thenReturn(posts(1));
+
+        postService.getFollowingTimeline(OWNER_ID, null, null);
+
+        // 自分の投稿も含める。投稿した直後にそれが見当たらないと投稿できたのか分からないため
+        verify(postMapper).findTimeline(
+            List.of(OTHER_USER_ID, 3L, OWNER_ID), null, PostService.DEFAULT_LIMIT + 1, OWNER_ID);
+    }
+
+    @Test
+    @DisplayName("誰もフォローしていなければフォロー中タイムラインは自分の投稿だけになる")
+    void followingTimelineFallsBackToSelf() {
+        when(followMapper.findFolloweeIds(OWNER_ID)).thenReturn(List.of());
+        when(postMapper.findTimeline(any(), isNull(), eq(PostService.DEFAULT_LIMIT + 1), eq(OWNER_ID)))
             .thenReturn(posts(1));
 
         postService.getFollowingTimeline(OWNER_ID, null, null);

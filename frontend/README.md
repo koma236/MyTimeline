@@ -2,7 +2,7 @@
 
 React + TypeScript + Vite + Tailwind CSS で構築した SPA。
 現時点で認証（F01）・タイムライン（F02）・投稿（F03、画像を除く）・コメント（F04）・
-いいね（F05）・プロフィール（F07）の画面を実装済み。
+いいね（F05）・フォローとユーザー検索（F06）・プロフィール（F07）の画面を実装済み。
 
 ## 起動
 
@@ -33,11 +33,11 @@ npm run dev     # → http://localhost:5173
 
 ```
 src/
-├── api/          Axios クライアント（自動リフレッシュ）と認証 / 投稿 / コメント / プロフィール API
+├── api/          Axios クライアント（自動リフレッシュ）と認証 / 投稿 / コメント / プロフィール・フォロー API
 ├── auth/         認証状態の Context とルーティングガード
-├── components/   共通 UI（Field / FormError / SubmitButton / Header / Avatar / AuthorLink / PostCard など）
-├── hooks/        画面横断のフック（useCursorPager とその利用側: useTimeline / useComments / useUserPosts）
-├── pages/        画面（Login / Signup / Home / PostDetail / Profile / ProfileEdit）
+├── components/   共通 UI（Field / FormError / SubmitButton / Header / Avatar / AuthorLink / PostCard / FollowButton など）
+├── hooks/        画面横断のフック（useCursorPager とその利用側: useTimeline / useComments / useUserPosts / useUserSearch）
+├── pages/        画面（Login / Signup / Home / PostDetail / Profile / ProfileEdit / Search）
 ├── types/        API の型定義（バックエンドの DTO と 1:1）
 └── utils/        表示用のユーティリティ（相対時刻）
 ```

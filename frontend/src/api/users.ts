@@ -1,10 +1,15 @@
 import { apiClient } from './client'
 import type { UserResponse } from '../types/auth'
 import type { TimelineResponse } from '../types/post'
-import type { ProfileResponse, UpdateProfileRequest } from '../types/user'
+import type {
+  FollowResponse,
+  ProfileResponse,
+  UpdateProfileRequest,
+  UserSearchResponse,
+} from '../types/user'
 
 /**
- * プロフィール API（F07）。
+ * プロフィール API（F07）とフォロー・ユーザー検索 API（F06）。
  *
  * アクセストークンの付与と 401 時の自動リフレッシュは client.ts の
  * インターセプタが行うので、ここでは認証を意識しなくてよい。
@@ -54,5 +59,37 @@ export async function uploadAvatar(file: File): Promise<UserResponse> {
 /** アバター画像を外して初期アバターに戻す。未設定でもエラーにはならない。 */
 export async function deleteAvatar(): Promise<UserResponse> {
   const response = await apiClient.delete<UserResponse>('/users/me/avatar')
+  return response.data
+}
+
+/**
+ * username / 表示名の部分一致でユーザーを検索する（SCR-06・F06）。
+ *
+ * 検索語が空でもエラーにはならず、新着ユーザーが返る。
+ */
+export async function searchUsers(
+  query: string,
+  cursor?: number | null,
+): Promise<UserSearchResponse> {
+  const response = await apiClient.get<UserSearchResponse>('/users/search', {
+    params: { q: query, ...(cursor == null ? {} : { cursor }) },
+  })
+  return response.data
+}
+
+/**
+ * フォローする（F06）。すでにフォロー済みでもエラーにはならない（冪等）。
+ *
+ * いいねと同じく、押すたびに反転するトグルではなく登録と解除で呼び分ける。
+ * 通信が再送されても意図と逆の状態にならない。
+ */
+export async function followUser(userId: number): Promise<FollowResponse> {
+  const response = await apiClient.post<FollowResponse>(`/users/${userId}/follow`)
+  return response.data
+}
+
+/** フォローを解除する。フォローしていなくてもエラーにはならない（冪等）。 */
+export async function unfollowUser(userId: number): Promise<FollowResponse> {
+  const response = await apiClient.delete<FollowResponse>(`/users/${userId}/follow`)
   return response.data
 }

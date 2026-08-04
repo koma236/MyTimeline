@@ -15,6 +15,16 @@ export function Header() {
           MCTIMELINE
         </Link>
         <nav className="flex items-center gap-1">
+          {/* ユーザー検索（SCR-06）。フォローする相手を見つける入口 */}
+          <Link
+            to="/search"
+            title="ユーザーを検索"
+            className="rounded-full px-3 py-1.5 text-sm transition-colors hover:bg-border"
+          >
+            <span aria-hidden="true">🔍</span>
+            <span className="ml-1 hidden sm:inline">検索</span>
+            <span className="sr-only sm:hidden">ユーザーを検索</span>
+          </Link>
           <Link
             to={`/users/${encodeURIComponent(user.username)}`}
             title="自分のプロフィール"

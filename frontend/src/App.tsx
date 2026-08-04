@@ -6,6 +6,7 @@ import { LoginPage } from './pages/LoginPage'
 import { PostDetailPage } from './pages/PostDetailPage'
 import { ProfileEditPage } from './pages/ProfileEditPage'
 import { ProfilePage } from './pages/ProfilePage'
+import { SearchPage } from './pages/SearchPage'
 import { SignupPage } from './pages/SignupPage'
 
 export default function App() {
@@ -20,6 +21,7 @@ export default function App() {
             <Route path="/posts/:id" element={<PostDetailPage />} />
             {/* 編集画面を /users/:username より先に置く必要はない（パスが重ならないため） */}
             <Route path="/users/:username" element={<ProfilePage />} />
+            <Route path="/search" element={<SearchPage />} />
             <Route path="/settings/profile" element={<ProfileEditPage />} />
           </Route>
 

@@ -4,8 +4,10 @@ import com.example.mytimeline.dto.ErrorResponse;
 import com.example.mytimeline.storage.InvalidImageException;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.MessageSourceResolvable;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +16,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
@@ -45,6 +48,26 @@ public class GlobalExceptionHandler {
         }
         return ResponseEntity.badRequest()
             .body(ErrorResponse.of("入力内容を確認してください", fieldErrors));
+    }
+
+    /**
+     * クエリパラメータやパス変数の制約違反 → 400。
+     *
+     * <p>{@code @RequestBody} の検証（{@link #handleValidation}）と違い、こちらは
+     * {@code @RequestParam} などに付けた制約を Spring が直接検証したときに飛んでくる。
+     * 拾わないと Spring 既定の ProblemDetail 形式で返ってしまい、共通のエラー形式から外れる。</p>
+     *
+     * <p>項目名を返さないのは、リクエスト全体で 1 項目しか検証していないため。
+     * 画面としても検索バーの下に出す文言が 1 つあれば足りる。</p>
+     */
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ErrorResponse> handleParameterValidation(HandlerMethodValidationException e) {
+        String message = e.getAllErrors().stream()
+            .map(MessageSourceResolvable::getDefaultMessage)
+            .filter(Objects::nonNull)
+            .findFirst()
+            .orElse("入力内容を確認してください");
+        return ResponseEntity.badRequest().body(ErrorResponse.of(message));
     }
 
     /**
@@ -138,6 +161,17 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleProfileNotFound(ProfileNotFoundException e) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
             .body(ErrorResponse.of(e.getMessage()));
+    }
+
+    /**
+     * 自分自身へのフォロー → 400。
+     *
+     * <p>F06 6. は「422/400 で拒否」としているが、このアプリは受け付けられない
+     * リクエストを一貫して 400 で返しているので 400 に寄せる。</p>
+     */
+    @ExceptionHandler(SelfFollowException.class)
+    public ResponseEntity<ErrorResponse> handleSelfFollow(SelfFollowException e) {
+        return ResponseEntity.badRequest().body(ErrorResponse.of(e.getMessage()));
     }
 
     /**

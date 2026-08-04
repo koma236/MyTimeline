@@ -1,6 +1,7 @@
 package com.example.mytimeline.mapper;
 
 import com.example.mytimeline.model.User;
+import java.util.List;
 import java.util.Optional;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
@@ -12,15 +13,41 @@ import org.apache.ibatis.annotations.Update;
 /**
  * users テーブルへのアクセス。
  *
- * <p>現時点の SQL はいずれも単一テーブルの単純クエリなので XML マッパーを作らず
- * アノテーションで記述している。JOIN や動的条件が必要になる F02（タイムライン）以降は
- * XML マッパーへの切り替えを検討する。</p>
+ * <p>単一テーブルの単純クエリはここにアノテーションで書き、動的な条件を含む
+ * {@link #search} だけ {@code src/main/resources/mapper/UserMapper.xml} に置いている。
+ * カーソルの有無で WHERE が変わるものは {@code <if>} が使える XML の方が素直に書けるため
+ * （{@link PostMapper} と同じ理由）。同じ名前空間の XML とアノテーションは併用できる。</p>
  */
 @Mapper
 public interface UserMapper {
 
     @Select("SELECT * FROM users WHERE id = #{id}")
     Optional<User> findById(@Param("id") Long id);
+
+    /**
+     * ユーザーの存在確認だけを行う。
+     *
+     * <p>フォロー相手が実在するかを見るための軽量版。{@link #findById} は
+     * password_hash まで含む行を丸ごと読むので、存在を知りたいだけの場面には重い。</p>
+     */
+    @Select("SELECT EXISTS (SELECT 1 FROM users WHERE id = #{id})")
+    boolean existsById(@Param("id") Long id);
+
+    /**
+     * username / 表示名の部分一致でユーザーを検索する（docs/features/F06_follow.md 2.）。
+     *
+     * <p>SQL は {@code UserMapper.xml}。パターンは呼び出し側が組み立てる
+     * （{@code %} や {@code _} を含む入力をそのまま渡すと、意図しない全件一致になるため）。</p>
+     *
+     * @param pattern ILIKE に渡すパターン。空検索なら {@code %%}（＝全ユーザー）
+     * @param cursor  このカーソルより古い（id の小さい）ユーザーを返す。{@code null} なら先頭から
+     * @param limit   取得件数。呼び出し側は「次があるか」を判定するため 1 件多く要求する
+     */
+    List<User> search(
+        @Param("pattern") String pattern,
+        @Param("cursor") Long cursor,
+        @Param("limit") int limit
+    );
 
     @Select("SELECT * FROM users WHERE email = #{email}")
     Optional<User> findByEmail(@Param("email") String email);
