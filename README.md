@@ -17,7 +17,7 @@ X（旧 Twitter）風のタイムライン型 SNS アプリ。テキストと画
 | F04 | コメント（投稿へのコメント・件数表示・自分のコメントの編集 / 削除） | **実装済み** |
 | F05 | いいね（いいね / 取り消し・件数表示。1 ユーザー 1 投稿 1 回） | **実装済み** |
 | F06 | フォロー（フォロー / 解除・フォロー中 / フォロワー数表示）・ユーザー検索 | 未実装 |
-| F07 | プロフィール表示・編集（表示名 / 自己紹介 / アバター画像） | **実装済み** |
+| F07 | プロフィール表示・編集（表示名 / 自己紹介 / プロフィール画像） | **実装済み** |
 
 **対象外（X との差別化）:** インプレッション数表示 / リツイート / DM / 通知 / ハッシュタグ
 
@@ -105,7 +105,7 @@ cp .env.example .env
 docker compose up -d db minio minio-init
 ```
 
-`minio-init` はアバター画像用のバケットを作って終了する使い捨てコンテナ。
+`minio-init` はプロフィール画像用のバケットを作って終了する使い捨てコンテナ。
 MinIO の管理コンソールは <http://localhost:9001>（既定のログインは `minioadmin` / `minioadmin`）。
 
 > バックエンドをコンテナ外（`./gradlew bootRun`）で動かす場合は、`.env` の
@@ -232,8 +232,8 @@ curl -s http://localhost:8080/actuator/health
 | GET | `/api/users/{username}` | プロフィール取得（メールアドレスは含まない） | 実装済み |
 | GET | `/api/users/{username}/posts` | ユーザーの投稿一覧（`?cursor=&limit=`） | 実装済み |
 | PUT | `/api/users/me` | 表示名・自己紹介の更新 | 実装済み |
-| PUT | `/api/users/me/avatar` | アバター画像のアップロード（multipart・JPEG / PNG・2MB まで） | 実装済み |
-| DELETE | `/api/users/me/avatar` | アバター画像の削除 | 実装済み |
+| PUT | `/api/users/me/avatar` | プロフィール画像のアップロード（multipart・JPEG / PNG・2MB まで） | 実装済み |
+| DELETE | `/api/users/me/avatar` | プロフィール画像の削除 | 実装済み |
 
 ### フォロー・ユーザー検索（[F06](docs/features/F06_follow.md)）
 
@@ -252,7 +252,7 @@ curl -s http://localhost:8080/actuator/health
 
 | テーブル | 説明 | 状態 |
 |---------|------|------|
-| `users` | ユーザー（アカウント。アバターは S3 の `avatar_key` を保持） | 作成済み（V1・V6 で `avatar_key` 追加） |
+| `users` | ユーザー（アカウント。プロフィール画像は S3 の `avatar_key` を保持） | 作成済み（V1・V6 で `avatar_key` 追加） |
 | `refresh_tokens` | リフレッシュトークン（1 行 = 1 セッション。SHA-256 ハッシュを保持） | 作成済み（V2） |
 | `posts` | 投稿（ポスト） | 作成済み（V3） |
 | `post_images` | 投稿画像（S3 の `s3_key` を保持） | 未作成 |

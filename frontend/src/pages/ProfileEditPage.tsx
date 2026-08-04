@@ -90,7 +90,7 @@ export function ProfileEditPage() {
   }
 
   const handleAvatarDelete = async () => {
-    if (!window.confirm('アバター画像を削除しますか？')) return
+    if (!window.confirm('プロフィール画像を削除しますか？')) return
 
     setAvatarPending(true)
     setAvatarError(undefined)
@@ -120,7 +120,7 @@ export function ProfileEditPage() {
         <h1 className="mb-6 text-xl font-bold">プロフィールを編集</h1>
 
         <section className="mb-8">
-          <h2 className="mb-2 text-[13px] font-bold text-muted">アバター画像</h2>
+          <h2 className="mb-2 text-[13px] font-bold text-muted">プロフィール画像</h2>
           <div className="flex items-center gap-4">
             <Avatar
               username={user.username}
@@ -155,7 +155,7 @@ export function ProfileEditPage() {
             type="file"
             accept="image/jpeg,image/png"
             onChange={(event) => void handleAvatarChange(event)}
-            aria-label="アバター画像を選択"
+            aria-label="プロフィール画像を選択"
             className="hidden"
           />
           <FormError message={avatarError} />

@@ -54,7 +54,7 @@
 | ロードバランサー | ALB | `/api/*` を EC2 へルーティング。将来の複数台構成に対応 | ヘルスチェックを設定 |
 | アプリ実行 | EC2 | Spring Boot アプリを実行 | public subnet、将来 Auto Scaling を検討 |
 | データベース | RDS for PostgreSQL | 永続データ（users/posts/... ） | private subnet、外部非公開 |
-| 画像ストレージ | S3（画像バケット） | 投稿画像・アバター画像の本体を保存（DB はキーのみ） | 現状は署名付き URL で配信。将来 CloudFront (OAC) 経由へ |
+| 画像ストレージ | S3（画像バケット） | 投稿画像・プロフィール画像の本体を保存（DB はキーのみ） | 現状は署名付き URL で配信。将来 CloudFront (OAC) 経由へ |
 | リージョン | `ap-northeast-1` | 東京リージョン | - |
 
 ### 11.4 ローカル開発での画像ストレージ
