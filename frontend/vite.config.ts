@@ -1,4 +1,5 @@
-import { defineConfig } from 'vite'
+// test 設定を型付きで書くため、defineConfig は vite ではなく vitest/config から取る
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
@@ -19,5 +20,12 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+  },
+  test: {
+    // React コンポーネントとフックを描画するので DOM 実装が要る
+    environment: 'jsdom',
+    // jest-dom のマッチャ登録。各テストファイルで import しなくて済むよう共通化する
+    setupFiles: ['./src/test/setup.ts'],
+    include: ['src/**/*.test.{ts,tsx}'],
   },
 })
