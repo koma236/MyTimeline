@@ -11,6 +11,7 @@ function authValue(status: AuthStatus): AuthContextValue {
     signup: async () => {},
     login: async () => {},
     logout: async () => {},
+    setCurrentUser: () => {},
   }
 }
 

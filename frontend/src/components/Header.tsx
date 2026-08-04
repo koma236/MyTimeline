@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
+import { Avatar } from './Avatar'
 
 /** mock/index.html の共通ヘッダー相当。ログイン中のみ表示される。 */
 export function Header() {
@@ -13,7 +14,21 @@ export function Header() {
         <Link to="/" className="text-[19px] font-extrabold tracking-[0.04em]">
           MCTIMELINE
         </Link>
-        <nav>
+        <nav className="flex items-center gap-1">
+          <Link
+            to={`/users/${encodeURIComponent(user.username)}`}
+            title="自分のプロフィール"
+            className="flex items-center gap-2 rounded-full px-2 py-1 transition-colors hover:bg-border"
+          >
+            <Avatar
+              username={user.username}
+              displayName={user.displayName}
+              avatarUrl={user.avatarUrl}
+            />
+            <span className="hidden max-w-32 truncate text-sm font-bold sm:inline">
+              {user.displayName}
+            </span>
+          </Link>
           <button
             type="button"
             onClick={() => void logout()}

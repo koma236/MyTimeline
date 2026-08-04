@@ -56,7 +56,7 @@ export function PostComposer({ onSubmit, onCreated }: PostComposerProps) {
       <FormError message={error} />
 
       <div className="flex gap-3">
-        <Avatar username={user.username} displayName={user.displayName} />
+        <Avatar username={user.username} displayName={user.displayName} avatarUrl={user.avatarUrl} />
         <textarea
           value={body}
           onChange={(event) => setBody(event.target.value)}

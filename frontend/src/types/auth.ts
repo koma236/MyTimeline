@@ -10,6 +10,8 @@ export interface UserResponse {
   email: string
   /** 未設定なら null。signup 直後は必ず null */
   bio: string | null
+  /** アバターの閲覧用 URL。未設定なら null（イニシャルの初期アバターを表示する） */
+  avatarUrl: string | null
   /** LocalDateTime のためタイムゾーンを持たない ISO 文字列（例: 2026-07-27T12:34:56.789） */
   createdAt: string
 }

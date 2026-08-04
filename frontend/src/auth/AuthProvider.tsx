@@ -72,9 +72,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [clearSession])
 
+  /**
+   * プロフィール編集の結果を反映する。
+   *
+   * 未ログインの状態で呼ばれても状態を作り直さないよう、既にユーザーが
+   * いるときだけ差し替える（ログインの経路は signup / login が担う）。
+   */
+  const setCurrentUser = useCallback((updated: UserResponse) => {
+    setUser((current) => (current == null ? current : updated))
+  }, [])
+
   const value = useMemo<AuthContextValue>(
-    () => ({ user, status, signup, login, logout }),
-    [user, status, signup, login, logout],
+    () => ({ user, status, signup, login, logout, setCurrentUser }),
+    [user, status, signup, login, logout, setCurrentUser],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
