@@ -24,6 +24,8 @@ ext {
 	// mybatis-spring-boot-starter は 4.0.x 系が Spring Boot 4.0 対応。
 	mybatisStarterVersion = '4.0.1'
 	jjwtVersion = '0.12.6'
+	// AWS SDK も Spring Boot の BOM 管理外。個別に版を書くとモジュール間でずれるので BOM を使う
+	awsSdkVersion = '2.35.11'
 }
 
 checkstyle {
@@ -65,6 +67,12 @@ dependencies {
 	implementation 'org.flywaydb:flyway-database-postgresql'
 	implementation "org.mybatis.spring.boot:mybatis-spring-boot-starter:${mybatisStarterVersion}"
 	implementation "io.jsonwebtoken:jjwt-api:${jjwtVersion}"
+	implementation platform("software.amazon.awssdk:bom:${awsSdkVersion}")
+	// アバター画像の保存先。S3Presigner も s3 モジュールに同梱されている。
+	// 同期 HTTP クライアント（apache-client）と非同期（netty-nio-client）が推移的に付いてくる。
+	// url-connection-client を足すと同期実装が 2 つになり、起動時に
+	// Multiple HTTP implementations were found で落ちるので追加しないこと
+	implementation 'software.amazon.awssdk:s3'
 	runtimeOnly "io.jsonwebtoken:jjwt-impl:${jjwtVersion}"
 	runtimeOnly "io.jsonwebtoken:jjwt-jackson:${jjwtVersion}"
 	runtimeOnly 'org.postgresql:postgresql'

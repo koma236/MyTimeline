@@ -11,6 +11,7 @@ import com.example.mytimeline.exception.UserNotFoundException;
 import com.example.mytimeline.mapper.UserMapper;
 import com.example.mytimeline.model.User;
 import com.example.mytimeline.security.JwtService;
+import com.example.mytimeline.storage.AvatarUrlFactory;
 import java.util.Optional;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -26,17 +27,20 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
+    private final AvatarUrlFactory avatarUrlFactory;
 
     public AuthService(
         UserMapper userMapper,
         PasswordEncoder passwordEncoder,
         JwtService jwtService,
-        RefreshTokenService refreshTokenService
+        RefreshTokenService refreshTokenService,
+        AvatarUrlFactory avatarUrlFactory
     ) {
         this.userMapper = userMapper;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.refreshTokenService = refreshTokenService;
+        this.avatarUrlFactory = avatarUrlFactory;
     }
 
     /**
@@ -100,7 +104,7 @@ public class AuthService {
             .orElseThrow(InvalidRefreshTokenException::new);
 
         return new AuthResult(
-            new AuthResponse(jwtService.generateAccessToken(user), UserResponse.from(user)),
+            new AuthResponse(jwtService.generateAccessToken(user), toResponse(user)),
             rotation.rawToken()
         );
     }
@@ -121,11 +125,21 @@ public class AuthService {
     @Transactional(readOnly = true)
     public UserResponse getById(Long userId) {
         return userMapper.findById(userId)
-            .map(UserResponse::from)
+            .map(this::toResponse)
             // トークンは有効だが対象ユーザーが削除済みのケース。
             // ログイン失敗用の文言（「メールアドレスまたはパスワードが…」）は
             // 何も入力していないこの経路では意味が通らないので使わない
             .orElseThrow(UserNotFoundException::new);
+    }
+
+    /**
+     * ユーザーを DTO へ詰め替える。
+     *
+     * <p>アバター URL はキーから毎回組み立てる期限付きの署名なので、
+     * {@code UserResponse.from} は解決済みの URL を引数で受け取る形になっている。</p>
+     */
+    private UserResponse toResponse(User user) {
+        return UserResponse.from(user, avatarUrlFactory.urlFor(user.getAvatarKey()));
     }
 
     /**
@@ -138,7 +152,7 @@ public class AuthService {
 
     private AuthResult issueFor(User user) {
         return new AuthResult(
-            new AuthResponse(jwtService.generateAccessToken(user), UserResponse.from(user)),
+            new AuthResponse(jwtService.generateAccessToken(user), toResponse(user)),
             refreshTokenService.issue(user.getId())
         );
     }

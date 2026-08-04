@@ -9,6 +9,7 @@ import com.example.mytimeline.exception.PostNotFoundException;
 import com.example.mytimeline.mapper.CommentMapper;
 import com.example.mytimeline.mapper.PostMapper;
 import com.example.mytimeline.model.Comment;
+import com.example.mytimeline.storage.AvatarUrlFactory;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
@@ -38,10 +39,12 @@ public class CommentService {
 
     private final CommentMapper commentMapper;
     private final PostMapper postMapper;
+    private final AvatarUrlFactory avatarUrlFactory;
 
-    public CommentService(CommentMapper commentMapper, PostMapper postMapper) {
+    public CommentService(CommentMapper commentMapper, PostMapper postMapper, AvatarUrlFactory avatarUrlFactory) {
         this.commentMapper = commentMapper;
         this.postMapper = postMapper;
+        this.avatarUrlFactory = avatarUrlFactory;
     }
 
     /**
@@ -64,7 +67,7 @@ public class CommentService {
 
         Long nextCursor = hasNext ? comments.getLast().getId() : null;
         return new CommentListResponse(
-            comments.stream().map(CommentResponse::from).toList(),
+            comments.stream().map(this::toResponse).toList(),
             nextCursor
         );
     }
@@ -87,7 +90,7 @@ public class CommentService {
         log.info("コメントを作成しました: commentId={}, postId={}, userId={}",
             comment.getId(), postId, currentUserId);
 
-        return CommentResponse.from(findOrThrow(comment.getId()));
+        return toResponse(findOrThrow(comment.getId()));
     }
 
     /**
@@ -101,7 +104,7 @@ public class CommentService {
         commentMapper.updateBody(id, request.body());
         log.info("コメントを編集しました: commentId={}, userId={}", id, currentUserId);
 
-        return CommentResponse.from(findOrThrow(id));
+        return toResponse(findOrThrow(id));
     }
 
     /**
@@ -117,6 +120,16 @@ public class CommentService {
 
         commentMapper.deleteById(id);
         log.info("コメントを削除しました: commentId={}, userId={}", id, currentUserId);
+    }
+
+    /**
+     * コメントを DTO へ詰め替える。
+     *
+     * <p>{@link PostService} と同じく、アバター URL はキーから毎回組み立てる期限付きの署名なので、
+     * その解決をここで一手に引き受けている。</p>
+     */
+    private CommentResponse toResponse(Comment comment) {
+        return CommentResponse.from(comment, avatarUrlFactory.urlFor(comment.getAuthor().getAvatarKey()));
     }
 
     /** 未指定・0 以下は既定値、上限超えは上限に丸める。 */

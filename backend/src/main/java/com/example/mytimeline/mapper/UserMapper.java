@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 /**
  * users テーブルへのアクセス。
@@ -39,4 +40,38 @@ public interface UserMapper {
             """)
     @Options(useGeneratedKeys = true, keyProperty = "id")
     void insert(User user);
+
+    /**
+     * 表示名と自己紹介を更新する（docs/features/F07_profile.md 2.）。
+     *
+     * <p>updated_at はトリガではなくここで明示的に進める（{@code PostMapper.updateBody} と同じ）。
+     * username / email は変更対象にしない。どちらも UNIQUE 制約と認証に関わるため、
+     * プロフィール編集とは別の手続きにする（F07 6.）。</p>
+     *
+     * @return 更新された行数
+     */
+    @Update("""
+            UPDATE users
+            SET display_name = #{displayName},
+                bio = #{bio},
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = #{id}
+            """)
+    int updateProfile(@Param("id") Long id, @Param("displayName") String displayName, @Param("bio") String bio);
+
+    /**
+     * アバター画像のキーを更新する。
+     *
+     * <p>{@code avatarKey} に null を渡せばアバターの削除になる。設定と削除で
+     * メソッドを分けないのは、DB 操作としては同じ 1 列の UPDATE でしかないため。</p>
+     *
+     * @return 更新された行数
+     */
+    @Update("""
+            UPDATE users
+            SET avatar_key = #{avatarKey},
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = #{id}
+            """)
+    int updateAvatarKey(@Param("id") Long id, @Param("avatarKey") String avatarKey);
 }

@@ -7,6 +7,7 @@ import com.example.mytimeline.exception.PostForbiddenException;
 import com.example.mytimeline.exception.PostNotFoundException;
 import com.example.mytimeline.mapper.PostMapper;
 import com.example.mytimeline.model.Post;
+import com.example.mytimeline.storage.AvatarUrlFactory;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
@@ -36,9 +37,11 @@ public class PostService {
     static final int MAX_LIMIT = 50;
 
     private final PostMapper postMapper;
+    private final AvatarUrlFactory avatarUrlFactory;
 
-    public PostService(PostMapper postMapper) {
+    public PostService(PostMapper postMapper, AvatarUrlFactory avatarUrlFactory) {
         this.postMapper = postMapper;
+        this.avatarUrlFactory = avatarUrlFactory;
     }
 
     /**
@@ -55,12 +58,12 @@ public class PostService {
         postMapper.insert(post);
         log.info("投稿を作成しました: postId={}, userId={}", post.getId(), userId);
 
-        return PostResponse.from(findOrThrow(post.getId(), userId));
+        return toResponse(findOrThrow(post.getId(), userId));
     }
 
     @Transactional(readOnly = true)
     public PostResponse getById(Long id, Long currentUserId) {
-        return PostResponse.from(findOrThrow(id, currentUserId));
+        return toResponse(findOrThrow(id, currentUserId));
     }
 
     /**
@@ -74,7 +77,7 @@ public class PostService {
         postMapper.updateBody(id, request.body());
         log.info("投稿を編集しました: postId={}, userId={}", id, currentUserId);
 
-        return PostResponse.from(findOrThrow(id, currentUserId));
+        return toResponse(findOrThrow(id, currentUserId));
     }
 
     /**
@@ -111,6 +114,22 @@ public class PostService {
     }
 
     /**
+     * 特定ユーザーの投稿一覧（SCR-05 プロフィール画面）。
+     *
+     * <p>タイムラインと同じマッパー・同じカーソル規約を使う。対象ユーザーを 1 人に
+     * 絞るだけなので専用の SQL は要らず、{@code idx_posts_user_id (user_id, id DESC)} が
+     * 絞り込みと並び替えの両方を賄う。</p>
+     *
+     * <p>対象ユーザーが存在するかの確認は呼び出し元（{@code UserService}）の責務。
+     * ここで存在しない ID を渡されても 0 件が返るだけで、それでは「存在しない」と
+     * 「投稿がまだ無い」を画面が区別できない。</p>
+     */
+    @Transactional(readOnly = true)
+    public TimelineResponse getUserTimeline(Long authorId, Long currentUserId, Long cursor, Integer limit) {
+        return toTimeline(List.of(authorId), cursor, limit, currentUserId);
+    }
+
+    /**
      * 1 ページ分を取得し、次ページの有無を判定する。
      *
      * <p>「次があるか」を知るために COUNT を別で流すのではなく、要求件数より 1 件多く取得して
@@ -130,7 +149,18 @@ public class PostService {
         }
 
         Long nextCursor = hasNext ? posts.getLast().getId() : null;
-        return new TimelineResponse(posts.stream().map(PostResponse::from).toList(), nextCursor);
+        return new TimelineResponse(posts.stream().map(this::toResponse).toList(), nextCursor);
+    }
+
+    /**
+     * 投稿を DTO へ詰め替える。
+     *
+     * <p>アバター URL は DB の値ではなく、キーから毎回組み立てる期限付きの署名。
+     * そのため {@code PostResponse.from} は解決済みの URL を引数で受け取る形になっており、
+     * その解決をここで一手に引き受けている。</p>
+     */
+    private PostResponse toResponse(Post post) {
+        return PostResponse.from(post, avatarUrlFactory.urlFor(post.getAuthor().getAvatarKey()));
     }
 
     /** 未指定・0 以下は既定値、上限超えは上限に丸める。 */

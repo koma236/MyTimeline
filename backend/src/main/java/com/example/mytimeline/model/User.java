@@ -16,6 +16,7 @@ public class User {
     private String email;
     private String passwordHash;
     private String bio;
+    private String avatarKey;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -65,6 +66,20 @@ public class User {
 
     public void setBio(String bio) {
         this.bio = bio;
+    }
+
+    /**
+     * アバター画像のストレージキー。未設定なら null。
+     *
+     * <p>画像本体は保持せず、キーだけを持つ。画面に出す URL は
+     * {@code AvatarUrlFactory} がこのキーから署名付き URL を組み立てる。</p>
+     */
+    public String getAvatarKey() {
+        return avatarKey;
+    }
+
+    public void setAvatarKey(String avatarKey) {
+        this.avatarKey = avatarKey;
     }
 
     public LocalDateTime getCreatedAt() {

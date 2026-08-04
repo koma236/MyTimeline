@@ -51,7 +51,7 @@ class TimelineControllerTest {
         PostResponse post = new PostResponse(
             10L,
             "こんにちは",
-            new PostAuthor(CURRENT_USER_ID, "taro", "山田太郎"),
+            new PostAuthor(CURRENT_USER_ID, "taro", "山田太郎", null),
             5L,
             1L,
             false,

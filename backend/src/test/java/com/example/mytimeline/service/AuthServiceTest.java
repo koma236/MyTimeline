@@ -17,6 +17,7 @@ import com.example.mytimeline.mapper.UserMapper;
 import com.example.mytimeline.model.User;
 import com.example.mytimeline.security.JwtProperties;
 import com.example.mytimeline.security.JwtService;
+import com.example.mytimeline.storage.AvatarUrlFactory;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,6 +41,13 @@ class AuthServiceTest {
     @Mock
     private RefreshTokenService refreshTokenService;
 
+    /**
+     * アバター URL の組み立ては署名付き URL の発行を伴うためモックにする。
+     * ここでは何も stub しないので、常に null（＝アバター未設定）として振る舞う。
+     */
+    @Mock
+    private AvatarUrlFactory avatarUrlFactory;
+
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     private AuthService authService;
@@ -49,7 +57,9 @@ class AuthServiceTest {
         JwtService jwtService = new JwtService(
             new JwtProperties("test-secret-key-for-unit-test-at-least-32-bytes", 60, 14, false)
         );
-        authService = new AuthService(userMapper, passwordEncoder, jwtService, refreshTokenService);
+        authService = new AuthService(
+            userMapper, passwordEncoder, jwtService, refreshTokenService, avatarUrlFactory
+        );
     }
 
     private SignupRequest signupRequest() {

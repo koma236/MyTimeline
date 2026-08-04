@@ -1,6 +1,7 @@
 package com.example.mytimeline.exception;
 
 import com.example.mytimeline.dto.ErrorResponse;
+import com.example.mytimeline.storage.InvalidImageException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -14,6 +15,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
@@ -129,13 +132,57 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 壊れた JSON・型の合わないパス変数 / クエリ → 400。
+     * 対象のユーザーが存在しない → 404。
+     */
+    @ExceptionHandler(ProfileNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleProfileNotFound(ProfileNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(ErrorResponse.of(e.getMessage()));
+    }
+
+    /**
+     * アップロードされた画像が受け付けられない → 400。
      *
-     * <p>例: {@code /api/posts/abc}（id が数値でない）、本文が JSON として解釈できない。
-     * どちらもリクエストの作り方の誤りなので、項目単位ではなく全体メッセージだけ返す。
+     * <p>拒否理由を {@code fieldErrors} の {@code avatar} に入れ、他の入力エラーと同じ形にする。
+     * クライアントはファイル選択欄の直下にそのまま表示できる。</p>
+     */
+    @ExceptionHandler(InvalidImageException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidImage(InvalidImageException e) {
+        return ResponseEntity.badRequest()
+            .body(ErrorResponse.of("入力内容を確認してください", Map.of("avatar", e.getMessage())));
+    }
+
+    /**
+     * multipart の上限を超えたリクエスト → 400。
+     *
+     * <p>HTTP としては 413 の方が正確だが、このアプリは「リクエストの作り方の誤り」を
+     * 一貫して 400 で返しており（{@link #handleMalformedRequest}）、クライアントの
+     * {@code toApiError} も {@code message} しか見ないので実害の差がない。一貫性を採る。</p>
+     *
+     * <p>通常は {@code ImageValidator} が先に項目付きのエラーを返す。
+     * multipart の上限をアプリ側の上限より大きくしてあるため、ここに届くのは
+     * 明らかに巨大なファイルだけ（application.properties 参照）。</p>
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException e) {
+        log.debug("アップロードサイズの上限を超えました: {}", e.getMessage());
+        return ResponseEntity.badRequest()
+            .body(ErrorResponse.of("ファイルサイズが大きすぎます"));
+    }
+
+    /**
+     * 壊れた JSON・型の合わないパス変数 / クエリ・必須パートの欠落 → 400。
+     *
+     * <p>例: {@code /api/posts/abc}（id が数値でない）、本文が JSON として解釈できない、
+     * multipart なのに {@code file} パートが無い。いずれもリクエストの作り方の誤りなので、
+     * 項目単位ではなく全体メッセージだけ返す。
      * 解析エラーの詳細はサーバー内部の情報を含みうるためレスポンスには載せない。</p>
      */
-    @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class})
+    @ExceptionHandler({
+        HttpMessageNotReadableException.class,
+        MethodArgumentTypeMismatchException.class,
+        MissingServletRequestPartException.class,
+    })
     public ResponseEntity<ErrorResponse> handleMalformedRequest(Exception e) {
         log.debug("リクエストの解釈に失敗しました: {}", e.getMessage());
         return ResponseEntity.badRequest()

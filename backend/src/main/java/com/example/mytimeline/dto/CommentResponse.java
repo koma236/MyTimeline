@@ -21,12 +21,15 @@ public record CommentResponse(
     LocalDateTime updatedAt
 ) {
 
-    public static CommentResponse from(Comment comment) {
+    /**
+     * @param authorAvatarUrl コメント投稿者のアバター URL（{@code AvatarUrlFactory} が解決済みのもの）
+     */
+    public static CommentResponse from(Comment comment, String authorAvatarUrl) {
         return new CommentResponse(
             comment.getId(),
             comment.getPostId(),
             comment.getBody(),
-            PostAuthor.from(comment.getAuthor()),
+            PostAuthor.from(comment.getAuthor(), authorAvatarUrl),
             comment.getCreatedAt(),
             comment.getUpdatedAt()
         );

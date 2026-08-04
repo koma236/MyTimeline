@@ -22,6 +22,7 @@
             <result property="username"    column="author_username"/>
             <result property="displayName" column="author_display_name"/>
             <result property="bio"         column="author_bio"/>
+            <result property="avatarKey"   column="author_avatar_key"/>
             <result property="createdAt"   column="author_created_at"/>
         </association>
     </resultMap>
@@ -39,6 +40,7 @@
             u.username     AS author_username,
             u.display_name AS author_display_name,
             u.bio          AS author_bio,
+            u.avatar_key   AS author_avatar_key,
             u.created_at   AS author_created_at
         FROM comments c
         JOIN users u ON u.id = c.user_id
