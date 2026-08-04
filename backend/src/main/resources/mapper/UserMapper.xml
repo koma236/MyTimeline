@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+  UserMapper のうち動的な条件を含む SQL だけを置く。
+  単一テーブルの単純クエリは UserMapper のアノテーションに残している。
+-->
+<mapper namespace="com.example.mytimeline.mapper.UserMapper">
+
+    <!--
+      username / 表示名の部分一致検索（F06）。
+
+      password_hash と email は取得しない。検索結果は他人の情報を並べる画面（SCR-06）で使うため、
+      そもそも読まないのが一番確実（SELECT * だとパスワードハッシュまでアプリのメモリに載る）。
+
+      並びは id の降順、カーソルも id。タイムラインと同じ規約なので、
+      「未入力時は新着ユーザーを表示」（F06 2.）もこの並びのまま満たせる。
+
+      ILIKE で大文字小文字を区別しない。username は小文字だけだが表示名は任意の文字列で、
+      「Taro」と入力して「taro さん」が出ないのは検索として不便なため。
+      エスケープ文字は明示する。既定でもバックスラッシュだが、
+      standard_conforming_strings の設定に挙動を委ねない。
+    -->
+    <select id="search" resultType="com.example.mytimeline.model.User">
+        SELECT
+            id,
+            username,
+            display_name,
+            bio,
+            avatar_key,
+            created_at,
+            updated_at
+        FROM users
+        <where>
+            (
+                username     ILIKE #{pattern} ESCAPE '\'
+                OR display_name ILIKE #{pattern} ESCAPE '\'
+            )
+            <if test="cursor != null">
+                AND id &lt; #{cursor}
+            </if>
+        </where>
+        ORDER BY id DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

@@ -14,6 +14,8 @@ import com.example.mytimeline.dto.ProfileResponse;
 import com.example.mytimeline.dto.UpdateProfileRequest;
 import com.example.mytimeline.dto.UserResponse;
 import com.example.mytimeline.exception.ProfileNotFoundException;
+import com.example.mytimeline.dto.UserSearchResponse;
+import com.example.mytimeline.mapper.FollowMapper;
 import com.example.mytimeline.mapper.UserMapper;
 import com.example.mytimeline.model.User;
 import com.example.mytimeline.storage.AvatarUrlFactory;
@@ -21,6 +23,8 @@ import com.example.mytimeline.storage.ImageValidator;
 import com.example.mytimeline.storage.InvalidImageException;
 import com.example.mytimeline.storage.S3StorageService;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,8 +42,14 @@ class UserServiceTest {
     private static final Long USER_ID = 1L;
     private static final String USERNAME = "taro";
 
+    /** プロフィールを見ている側（他人）。フォロー状態は「誰が見ているか」で変わる */
+    private static final Long VIEWER_ID = 99L;
+
     @Mock
     private UserMapper userMapper;
+
+    @Mock
+    private FollowMapper followMapper;
 
     @Mock
     private PostService postService;
@@ -63,7 +73,7 @@ class UserServiceTest {
         when(userMapper.findByUsername(USERNAME)).thenReturn(Optional.of(user));
         when(avatarUrlFactory.urlFor("avatars/1/old.png")).thenReturn("https://example.com/signed");
 
-        ProfileResponse response = userService.getProfile(USERNAME);
+        ProfileResponse response = userService.getProfile(USERNAME, VIEWER_ID);
 
         assertThat(response.username()).isEqualTo(USERNAME);
         assertThat(response.bio()).isEqualTo("既存の自己紹介");
@@ -71,13 +81,124 @@ class UserServiceTest {
     }
 
     @Test
+    @DisplayName("プロフィールにフォロー中数・フォロワー数とフォロー状態が入る")
+    void getProfileIncludesFollowCounts() {
+        when(userMapper.findByUsername(USERNAME)).thenReturn(Optional.of(user(null, null)));
+        when(followMapper.countFollowing(USER_ID)).thenReturn(45L);
+        when(followMapper.countFollowers(USER_ID)).thenReturn(120L);
+        when(followMapper.exists(VIEWER_ID, USER_ID)).thenReturn(true);
+
+        ProfileResponse response = userService.getProfile(USERNAME, VIEWER_ID);
+
+        assertThat(response.followingCount()).isEqualTo(45L);
+        assertThat(response.followerCount()).isEqualTo(120L);
+        assertThat(response.followingByMe()).isTrue();
+    }
+
+    @Test
+    @DisplayName("自分のプロフィールではフォロー状態を問い合わせない")
+    void getProfileSkipsFollowCheckForSelf() {
+        // 自己フォローの行はチェック制約で存在し得ないので、聞いても必ず false になる
+        when(userMapper.findByUsername(USERNAME)).thenReturn(Optional.of(user(null, null)));
+
+        ProfileResponse response = userService.getProfile(USERNAME, USER_ID);
+
+        assertThat(response.followingByMe()).isFalse();
+        verify(followMapper, never()).exists(any(), any());
+    }
+
+    @Test
     @DisplayName("存在しない username のプロフィールは 404 相当になる")
     void getProfileThrowsWhenMissing() {
         when(userMapper.findByUsername("unknown")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> userService.getProfile("unknown"))
+        assertThatThrownBy(() -> userService.getProfile("unknown", VIEWER_ID))
             .isInstanceOf(ProfileNotFoundException.class)
             .hasMessage(ProfileNotFoundException.MESSAGE);
+    }
+
+    @Test
+    @DisplayName("検索は前後を % で挟んだ部分一致で問い合わせる")
+    void searchUsesPartialMatch() {
+        when(userMapper.search("%taro%", null, UserService.DEFAULT_LIMIT + 1)).thenReturn(List.of());
+
+        userService.searchUsers("taro", VIEWER_ID, null, null);
+
+        verify(userMapper).search("%taro%", null, UserService.DEFAULT_LIMIT + 1);
+    }
+
+    @Test
+    @DisplayName("検索語のワイルドカードはエスケープされる")
+    void searchEscapesWildcards() {
+        // 素通しにすると「%」1 文字の検索が全ユーザーに一致してしまう
+        when(userMapper.search("%100\\%\\_off%", null, UserService.DEFAULT_LIMIT + 1)).thenReturn(List.of());
+
+        userService.searchUsers("100%_off", VIEWER_ID, null, null);
+
+        verify(userMapper).search("%100\\%\\_off%", null, UserService.DEFAULT_LIMIT + 1);
+    }
+
+    @Test
+    @DisplayName("検索語が未指定なら全ユーザーが対象になる")
+    void searchWithoutQueryMatchesEveryone() {
+        // 何も入力していない状態で空の画面を見せても、フォローする相手は見つからない
+        when(userMapper.search("%%", null, UserService.DEFAULT_LIMIT + 1)).thenReturn(List.of());
+
+        userService.searchUsers(null, VIEWER_ID, null, null);
+
+        verify(userMapper).search("%%", null, UserService.DEFAULT_LIMIT + 1);
+    }
+
+    @Test
+    @DisplayName("検索は 1 件多く取り、余ったらそれを外して nextCursor を返す")
+    void searchTrimsExtraRowAndReturnsCursor() {
+        List<User> found = new ArrayList<>();
+        for (long id = 3; id >= 1; id--) {
+            found.add(otherUser(id));
+        }
+        when(userMapper.search("%a%", null, 3)).thenReturn(found);
+
+        UserSearchResponse response = userService.searchUsers("a", VIEWER_ID, null, 2);
+
+        assertThat(response.users()).hasSize(2);
+        // 返した最後のユーザーの id が次のカーソルになる
+        assertThat(response.nextCursor()).isEqualTo(2L);
+    }
+
+    @Test
+    @DisplayName("最後のページでは nextCursor が null になる")
+    void searchReturnsNullCursorOnLastPage() {
+        when(userMapper.search("%a%", null, 3)).thenReturn(List.of(otherUser(2L)));
+
+        UserSearchResponse response = userService.searchUsers("a", VIEWER_ID, null, 2);
+
+        assertThat(response.users()).hasSize(1);
+        assertThat(response.nextCursor()).isNull();
+    }
+
+    @Test
+    @DisplayName("検索結果のフォロー状態は件数によらず 1 回の問い合わせで埋める")
+    void searchResolvesFollowStateWithSingleQuery() {
+        // 1 件ずつ EXISTS を流すと N+1 になる
+        when(userMapper.search("%a%", null, UserService.DEFAULT_LIMIT + 1))
+            .thenReturn(List.of(otherUser(2L), otherUser(3L)));
+        when(followMapper.findFolloweeIds(VIEWER_ID)).thenReturn(List.of(3L));
+
+        UserSearchResponse response = userService.searchUsers("a", VIEWER_ID, null, null);
+
+        assertThat(response.users().get(0).followingByMe()).isFalse();
+        assertThat(response.users().get(1).followingByMe()).isTrue();
+        verify(followMapper, never()).exists(any(), any());
+    }
+
+    @Test
+    @DisplayName("検索の limit は上限に丸められる")
+    void searchClampsLimit() {
+        when(userMapper.search("%a%", null, UserService.MAX_LIMIT + 1)).thenReturn(List.of());
+
+        userService.searchUsers("a", VIEWER_ID, null, 500);
+
+        verify(userMapper).search("%a%", null, UserService.MAX_LIMIT + 1);
     }
 
     @Test
@@ -197,6 +318,15 @@ class UserServiceTest {
 
     private static MultipartFile pngFile() {
         return new MockMultipartFile("file", "a.png", "image/png", new byte[] {1, 2, 3});
+    }
+
+    /** 検索結果に並ぶ他のユーザー。id だけ変えられれば足りる */
+    private static User otherUser(Long id) {
+        User user = new User();
+        user.setId(id);
+        user.setUsername("user" + id);
+        user.setDisplayName("ユーザー" + id);
+        return user;
     }
 
     private static User user(String bio, String avatarKey) {

@@ -10,10 +10,10 @@ import java.time.LocalDateTime;
  * 誰でも開けるプロフィールで返すと個人情報が漏れる。{@link PostAuthor} と同じ判断を
  * プロフィール用に広げた形。</p>
  *
- * <p>フォロー中数・フォロワー数・フォロー済みかは follows テーブルが未作成のため含めていない。
- * F06（フォロー機能）の実装時に追加する。</p>
- *
- * @param avatarUrl アバターの閲覧用 URL。未設定なら null（クライアントは初期アバターを表示する）
+ * @param avatarUrl      アバターの閲覧用 URL。未設定なら null（クライアントは初期アバターを表示する）
+ * @param followingCount このユーザーがフォローしている人数（F06）
+ * @param followerCount  このユーザーをフォローしている人数（F06）
+ * @param followingByMe  ログイン中ユーザーがこのユーザーをフォロー済みか。自分自身なら常に false
  */
 public record ProfileResponse(
     Long id,
@@ -21,20 +21,32 @@ public record ProfileResponse(
     String displayName,
     String bio,
     String avatarUrl,
-    LocalDateTime createdAt
+    LocalDateTime createdAt,
+    long followingCount,
+    long followerCount,
+    boolean followingByMe
 ) {
 
     /**
      * @param avatarUrl {@code AvatarUrlFactory} が解決済みの URL。DB の値ではないため引数で受け取る
      */
-    public static ProfileResponse from(User user, String avatarUrl) {
+    public static ProfileResponse from(
+        User user,
+        String avatarUrl,
+        long followingCount,
+        long followerCount,
+        boolean followingByMe
+    ) {
         return new ProfileResponse(
             user.getId(),
             user.getUsername(),
             user.getDisplayName(),
             user.getBio(),
             avatarUrl,
-            user.getCreatedAt()
+            user.getCreatedAt(),
+            followingCount,
+            followerCount,
+            followingByMe
         );
     }
 }
