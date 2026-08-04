@@ -14,9 +14,10 @@ X（旧 Twitter）風のタイムライン型 SNS アプリ。テキストと画
 | F02 | タイムライン表示（「フォロー中」「すべて」の 2 タブ・無限スクロール） | **実装済み**（フォロー中は自分の投稿のみ。F06 実装時に対象を拡張） |
 | F03 | 投稿（テキスト）・自分の投稿の編集 / 削除 | **実装済み**（画像添付は未実装） |
 | F03 | 画像投稿（AWS S3 に保存） | 未実装 |
-| F04 | コメント（投稿へのコメント・件数表示・自分のコメント削除） | 未実装 |
-| F05 | いいね（いいね / 取り消し・件数表示。1 ユーザー 1 投稿 1 回） | 未実装 |
+| F04 | コメント（投稿へのコメント・件数表示・自分のコメントの編集 / 削除） | **実装済み** |
+| F05 | いいね（いいね / 取り消し・件数表示。1 ユーザー 1 投稿 1 回） | **実装済み** |
 | F06 | フォロー（フォロー / 解除・フォロー中 / フォロワー数表示）・ユーザー検索 | 未実装 |
+| F07 | プロフィール表示・編集（表示名 / 自己紹介 / プロフィール画像） | **実装済み** |
 
 **対象外（X との差別化）:** インプレッション数表示 / リツイート / DM / 通知 / ハッシュタグ
 
@@ -29,7 +30,7 @@ X（旧 Twitter）風のタイムライン型 SNS アプリ。テキストと画
 | フロントエンド | React 19 + TypeScript 6 + Vite 8 + Tailwind CSS 3 + Axios（Lint: Oxlint / テスト: Vitest + React Testing Library） |
 | バックエンド | Java 25 + Spring Boot 4.0 + MyBatis + Flyway + Spring Security（JWT 認証）（静的解析: Checkstyle + SpotBugs） |
 | データベース | PostgreSQL 15（ローカル）/ PostgreSQL 16（RDS, 本番想定） |
-| 画像ストレージ | AWS S3 |
+| 画像ストレージ | AWS S3（ローカルは S3 互換の MinIO） |
 | ローカル実行 | Docker + Docker Compose |
 | 本番インフラ（暫定・前提） | AWS（CloudFront + S3 + ALB + EC2 + RDS） |
 
@@ -53,6 +54,7 @@ MyTimeline/
 │   │       ├── mapper/       # MyBatis Mapper（アノテーション SQL）
 │   │       ├── model/        # テーブルに対応するモデル（User/Post/RefreshToken）
 │   │       ├── security/     # 認証・認可（JWT・Cookie）
+│   │       ├── storage/      # 画像ストレージ（S3 / MinIO）と画像検証
 │   │       ├── exception/    # 例外と共通エラーハンドリング
 │   │       └── dto/          # リクエスト / レスポンス DTO（record）
 │   └── src/main/resources/
@@ -63,12 +65,12 @@ MyTimeline/
 │       ├── api/              # Axios クライアント設定（自動リフレッシュを含む）
 │       ├── auth/             # 認証状態（Context）とルーティングガード
 │       ├── components/       # UI コンポーネント（Field / Header / PostCard など）
-│       ├── hooks/            # 画面横断のフック（useTimeline）
-│       ├── pages/            # 画面（Login / Signup / Home / PostDetail）
+│       ├── hooks/            # 画面横断のフック（useCursorPager とその利用側）
+│       ├── pages/            # 画面（Login / Signup / Home / PostDetail / Profile）
 │       ├── types/            # API レスポンス型定義（バックエンドの DTO と 1:1）
 │       └── utils/            # 表示用の小さなユーティリティ（相対時刻など）
 ├── docs/                     # 設計ドキュメント（要件定義・機能定義書）
-├── docker-compose.yml        # PostgreSQL + Backend
+├── docker-compose.yml        # PostgreSQL + MinIO + Backend
 └── .claude/                  # Claude Code 用スキル・権限設定
 ```
 
@@ -81,7 +83,7 @@ MyTimeline/
 - Java 25
 - Node.js 20+
 - Docker Desktop
-- AWS アカウント（S3 画像バケット用）
+- AWS アカウント（本番の S3 画像バケット用。**ローカル開発では不要** — S3 互換の MinIO を docker compose で立てる）
 
 ### 1. リポジトリをクローン
 
@@ -94,14 +96,21 @@ cd MyTimeline
 
 ```bash
 cp .env.example .env
-# DB_NAME / DB_USER / DB_PASSWORD、S3 バケット名・認証情報などを設定
+# DB_NAME / DB_USER / DB_PASSWORD、S3_* などを設定。既定値のままローカル開発できる
 ```
 
-### 3. データベースを起動（Docker）
+### 3. データベースと画像ストレージを起動（Docker）
 
 ```bash
-docker compose up -d db
+docker compose up -d db minio minio-init
 ```
+
+`minio-init` はプロフィール画像用のバケットを作って終了する使い捨てコンテナ。
+MinIO の管理コンソールは <http://localhost:9001>（既定のログインは `minioadmin` / `minioadmin`）。
+
+> バックエンドをコンテナ外（`./gradlew bootRun`）で動かす場合は、`.env` の
+> `S3_ENDPOINT` を `http://localhost:9000` に変えること。コンテナ名 `minio` は
+> ホストから名前解決できないため。
 
 ### 4. バックエンドを起動
 
@@ -202,42 +211,53 @@ curl -s http://localhost:8080/actuator/health
 
 | メソッド | パス | 説明 |
 |---------|------|------|
-| GET | `/api/posts/{postId}/comments` | コメント一覧取得 |
-| POST | `/api/posts/{postId}/comments` | コメント作成 |
-| DELETE | `/api/comments/{id}` | コメント削除（本人のみ） |
+| メソッド | パス | 説明 | 状態 |
+|---------|------|------|------|
+| GET | `/api/posts/{postId}/comments` | コメント一覧取得（`?cursor=&limit=`・古い順） | 実装済み |
+| POST | `/api/posts/{postId}/comments` | コメント作成（本文 500 文字まで） | 実装済み |
+| PUT | `/api/comments/{id}` | コメントの本文を編集（本人のみ） | 実装済み |
+| DELETE | `/api/comments/{id}` | コメント削除（本人のみ） | 実装済み |
 
 ### いいね（[F05](docs/features/F05_like.md)）
 
-| メソッド | パス | 説明 |
-|---------|------|------|
-| POST | `/api/posts/{postId}/like` | いいね付与 |
-| DELETE | `/api/posts/{postId}/like` | いいね取り消し |
+| メソッド | パス | 説明 | 状態 |
+|---------|------|------|------|
+| POST | `/api/posts/{postId}/like` | いいね付与（冪等） | 実装済み |
+| DELETE | `/api/posts/{postId}/like` | いいね取り消し（冪等） | 実装済み |
+
+### プロフィール（[F07](docs/features/F07_profile.md)）
+
+| メソッド | パス | 説明 | 状態 |
+|---------|------|------|------|
+| GET | `/api/users/{username}` | プロフィール取得（メールアドレスは含まない） | 実装済み |
+| GET | `/api/users/{username}/posts` | ユーザーの投稿一覧（`?cursor=&limit=`） | 実装済み |
+| PUT | `/api/users/me` | 表示名・自己紹介の更新 | 実装済み |
+| PUT | `/api/users/me/avatar` | プロフィール画像のアップロード（multipart・JPEG / PNG・2MB まで） | 実装済み |
+| DELETE | `/api/users/me/avatar` | プロフィール画像の削除 | 実装済み |
 
 ### フォロー・ユーザー検索（[F06](docs/features/F06_follow.md)）
 
-| メソッド | パス | 説明 |
-|---------|------|------|
-| GET | `/api/users/search` | ユーザー検索（部分一致） |
-| GET | `/api/users/{username}` | プロフィール取得 |
-| GET | `/api/users/{username}/posts` | ユーザーの投稿一覧 |
-| POST | `/api/users/{userId}/follow` | フォロー |
-| DELETE | `/api/users/{userId}/follow` | フォロー解除 |
+| メソッド | パス | 説明 | 状態 |
+|---------|------|------|------|
+| GET | `/api/users/search` | ユーザー検索（部分一致） | 未実装 |
+| POST | `/api/users/{userId}/follow` | フォロー | 未実装 |
+| DELETE | `/api/users/{userId}/follow` | フォロー解除 | 未実装 |
 
 ---
 
 ## データモデル
 
-最終的に 6 テーブル構成（PostgreSQL）。詳細は [docs/07_er_diagram.md](docs/07_er_diagram.md)。
+最終的に 7 テーブル構成（PostgreSQL）。詳細は [docs/07_er_diagram.md](docs/07_er_diagram.md)。
 スキーマは Flyway（`backend/src/main/resources/db/migration/`）が唯一の情報源。
 
 | テーブル | 説明 | 状態 |
 |---------|------|------|
-| `users` | ユーザー（アカウント） | 作成済み（V1） |
+| `users` | ユーザー（アカウント。プロフィール画像は S3 の `avatar_key` を保持） | 作成済み（V1・V6 で `avatar_key` 追加） |
 | `refresh_tokens` | リフレッシュトークン（1 行 = 1 セッション。SHA-256 ハッシュを保持） | 作成済み（V2） |
 | `posts` | 投稿（ポスト） | 作成済み（V3） |
 | `post_images` | 投稿画像（S3 の `s3_key` を保持） | 未作成 |
-| `comments` | 投稿へのコメント | 未作成 |
-| `likes` | いいね（`(post_id, user_id)` は UNIQUE） | 未作成 |
+| `comments` | 投稿へのコメント | 作成済み（V4） |
+| `likes` | いいね（`(post_id, user_id)` は UNIQUE） | 作成済み（V5） |
 | `follows` | フォロー関係（`(follower_id, followee_id)` は UNIQUE、自己フォロー禁止） | 未作成 |
 
 ---
@@ -282,5 +302,6 @@ Browser → CloudFront ┬─ /*      → S3 (静的: React)
 | [docs/features/F04_comment.md](docs/features/F04_comment.md) | コメント |
 | [docs/features/F05_like.md](docs/features/F05_like.md) | いいね |
 | [docs/features/F06_follow.md](docs/features/F06_follow.md) | フォロー・ユーザー検索 |
+| [docs/features/F07_profile.md](docs/features/F07_profile.md) | プロフィール表示・編集 |
 
 要件定義のサマリは [requirements.md](requirements.md) を参照。

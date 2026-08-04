@@ -74,7 +74,7 @@ class AuthControllerTest {
     private JwtService jwtService;
 
     private static UserResponse userResponse() {
-        return new UserResponse(1L, "taro", "山田太郎", "taro@example.com", null, LocalDateTime.now());
+        return new UserResponse(1L, "taro", "山田太郎", "taro@example.com", null, null, LocalDateTime.now());
     }
 
     private static AuthService.AuthResult authResult(String accessToken) {

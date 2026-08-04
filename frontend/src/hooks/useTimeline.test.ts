@@ -12,7 +12,7 @@ function post(id: number): PostResponse {
   return {
     id,
     body: `投稿 ${id}`,
-    author: { id: 1, username: 'saki', displayName: 'さき' },
+    author: { id: 1, username: 'saki', displayName: 'さき', avatarUrl: null },
     likeCount: 0,
     commentCount: 0,
     likedByMe: false,

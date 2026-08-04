@@ -27,11 +27,14 @@ public record PostResponse(
     LocalDateTime updatedAt
 ) {
 
-    public static PostResponse from(Post post) {
+    /**
+     * @param authorAvatarUrl 投稿者のアバター URL（{@code AvatarUrlFactory} が解決済みのもの）
+     */
+    public static PostResponse from(Post post, String authorAvatarUrl) {
         return new PostResponse(
             post.getId(),
             post.getBody(),
-            PostAuthor.from(post.getAuthor()),
+            PostAuthor.from(post.getAuthor(), authorAvatarUrl),
             post.getLikeCount(),
             post.getCommentCount(),
             post.isLikedByMe(),

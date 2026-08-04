@@ -68,7 +68,7 @@ class CommentControllerTest {
             id,
             POST_ID,
             body,
-            new PostAuthor(CURRENT_USER_ID, "taro", "山田太郎"),
+            new PostAuthor(CURRENT_USER_ID, "taro", "山田太郎", null),
             LocalDateTime.now(),
             LocalDateTime.now()
         );

@@ -13,6 +13,13 @@ export interface AuthContextValue {
   signup: (request: SignupRequest) => Promise<void>
   login: (request: LoginRequest) => Promise<void>
   logout: () => Promise<void>
+  /**
+   * ログイン中ユーザーの情報を差し替える。
+   *
+   * プロフィール更新の API が更新後の UserResponse を返すので、それをそのまま
+   * 流し込めばヘッダーや投稿フォームのアバターが即座に揃う（/me の取り直しは不要）。
+   */
+  setCurrentUser: (user: UserResponse) => void
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)

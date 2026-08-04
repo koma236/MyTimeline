@@ -24,6 +24,7 @@
             <result property="username"    column="author_username"/>
             <result property="displayName" column="author_display_name"/>
             <result property="bio"         column="author_bio"/>
+            <result property="avatarKey"   column="author_avatar_key"/>
             <result property="createdAt"   column="author_created_at"/>
         </association>
     </resultMap>
@@ -50,6 +51,7 @@
             u.username     AS author_username,
             u.display_name AS author_display_name,
             u.bio          AS author_bio,
+            u.avatar_key   AS author_avatar_key,
             u.created_at   AS author_created_at,
             (SELECT COUNT(*) FROM likes    l WHERE l.post_id = p.id) AS like_count,
             (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comment_count,

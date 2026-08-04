@@ -8,6 +8,8 @@ export interface PostAuthor {
   id: number
   username: string
   displayName: string
+  /** アバターの閲覧用 URL。未設定なら null（イニシャルの初期アバターを表示する） */
+  avatarUrl: string | null
 }
 
 export interface PostResponse {

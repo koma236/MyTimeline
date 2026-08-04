@@ -4,6 +4,7 @@ import { toApiError } from '../api/client'
 import { useAuth } from '../auth/useAuth'
 import type { PostResponse } from '../types/post'
 import { absoluteTime, relativeTime } from '../utils/relativeTime'
+import { AuthorLink } from './AuthorLink'
 import { Avatar } from './Avatar'
 import { FormError } from './FormError'
 import { PostActions } from './PostActions'
@@ -104,12 +105,18 @@ export function PostCard({
 
   return (
     <article className="flex gap-3 border-b border-border px-4 py-3">
-      <Avatar username={post.author.username} displayName={post.author.displayName} large={detail} />
+      <Link to={`/users/${encodeURIComponent(post.author.username)}`} className="shrink-0">
+        <Avatar
+          username={post.author.username}
+          displayName={post.author.displayName}
+          avatarUrl={post.author.avatarUrl}
+          size={detail ? 'lg' : 'md'}
+        />
+      </Link>
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <span className="truncate font-bold">{post.author.displayName}</span>
-          <span className="truncate text-sm text-muted">@{post.author.username}</span>
+          <AuthorLink author={post.author} />
           <span className="text-sm text-muted">・</span>
           {detail ? (
             <time dateTime={post.createdAt} className="text-sm text-muted">

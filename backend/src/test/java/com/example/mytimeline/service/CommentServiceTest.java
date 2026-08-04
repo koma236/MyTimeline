@@ -20,6 +20,7 @@ import com.example.mytimeline.mapper.CommentMapper;
 import com.example.mytimeline.mapper.PostMapper;
 import com.example.mytimeline.model.Comment;
 import com.example.mytimeline.model.User;
+import com.example.mytimeline.storage.AvatarUrlFactory;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,6 +46,13 @@ class CommentServiceTest {
 
     @Mock
     private PostMapper postMapper;
+
+    /**
+     * アバター URL の組み立ては署名付き URL の発行を伴うためモックにする。
+     * ここでは何も stub しないので、常に null（＝アバター未設定）として振る舞う。
+     */
+    @Mock
+    private AvatarUrlFactory avatarUrlFactory;
 
     @InjectMocks
     private CommentService commentService;

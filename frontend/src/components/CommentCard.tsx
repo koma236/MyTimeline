@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { toApiError } from '../api/client'
 import { useAuth } from '../auth/useAuth'
 import type { CommentResponse } from '../types/comment'
 import { absoluteTime, relativeTime } from '../utils/relativeTime'
+import { AuthorLink } from './AuthorLink'
 import { Avatar } from './Avatar'
 import { COMMENT_BODY_MAX_LENGTH } from './CommentComposer'
 import { FormError } from './FormError'
@@ -88,12 +90,17 @@ export function CommentCard({ comment, onUpdate, onDelete }: CommentCardProps) {
 
   return (
     <article className="flex gap-3 border-b border-border px-4 py-3">
-      <Avatar username={comment.author.username} displayName={comment.author.displayName} />
+      <Link to={`/users/${encodeURIComponent(comment.author.username)}`} className="shrink-0">
+        <Avatar
+          username={comment.author.username}
+          displayName={comment.author.displayName}
+          avatarUrl={comment.author.avatarUrl}
+        />
+      </Link>
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <span className="truncate font-bold">{comment.author.displayName}</span>
-          <span className="truncate text-sm text-muted">@{comment.author.username}</span>
+          <AuthorLink author={comment.author} />
           <span className="text-sm text-muted">・</span>
           <time
             dateTime={comment.createdAt}
