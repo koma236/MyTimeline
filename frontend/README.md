@@ -1,7 +1,8 @@
 # MyTimeline フロントエンド
 
 React + TypeScript + Vite + Tailwind CSS で構築した SPA。
-現時点で認証（F01）・タイムライン（F02）・投稿（F03、画像を除く）の画面を実装済み。
+現時点で認証（F01）・タイムライン（F02）・投稿（F03、画像を除く）・コメント（F04）・
+いいね（F05）・プロフィール（F07）の画面を実装済み。
 
 ## 起動
 
@@ -32,11 +33,11 @@ npm run dev     # → http://localhost:5173
 
 ```
 src/
-├── api/          Axios クライアント（自動リフレッシュ）と認証 / 投稿 API
+├── api/          Axios クライアント（自動リフレッシュ）と認証 / 投稿 / コメント / プロフィール API
 ├── auth/         認証状態の Context とルーティングガード
-├── components/   共通 UI（Field / FormError / SubmitButton / Header / PostCard / PostComposer）
-├── hooks/        画面横断のフック（useTimeline: 取得とカーソルページング）
-├── pages/        画面（Login / Signup / Home / PostDetail）
+├── components/   共通 UI（Field / FormError / SubmitButton / Header / Avatar / AuthorLink / PostCard など）
+├── hooks/        画面横断のフック（useCursorPager とその利用側: useTimeline / useComments / useUserPosts）
+├── pages/        画面（Login / Signup / Home / PostDetail / Profile / ProfileEdit）
 ├── types/        API の型定義（バックエンドの DTO と 1:1）
 └── utils/        表示用のユーティリティ（相対時刻）
 ```
@@ -79,7 +80,10 @@ npm run test:watch    # 監視モード
 
 | 対象 | 主に守っているもの |
 |------|------------------|
-| `src/hooks/useTimeline.ts` | カーソルページング、タブ切替時の取り直し、**追い越されたレスポンスの破棄** |
+| `src/hooks/useCursorPager.ts` | カーソルページングの実体。**追い越されたレスポンスの破棄**と二重取得の抑止 |
+| `src/hooks/useTimeline.ts` | タブ切替時の取り直し。useCursorPager へのリファクタの回帰検知も兼ねる |
+| `src/hooks/useUserPosts.ts` | 対象ユーザーの切替時の取り直し、部分更新（いいね）と削除 |
+| `src/components/Avatar.tsx` | 画像とイニシャルの出し分け、**署名付き URL 失効時のフォールバック** |
 | `src/api/client.ts` | 401 の自動リフレッシュと **1 度だけの再送**、**並行する 401 が 1 本の refresh にまとまること** |
 | `src/api/client.ts`（`toApiError`） | ネットワークエラー / `fieldErrors` 付き / 想定外の分岐 |
 | `src/auth/RouteGuards.tsx` | `loading` / `authenticated` / `anonymous` の出し分け |

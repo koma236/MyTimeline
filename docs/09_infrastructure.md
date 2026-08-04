@@ -54,10 +54,25 @@
 | ロードバランサー | ALB | `/api/*` を EC2 へルーティング。将来の複数台構成に対応 | ヘルスチェックを設定 |
 | アプリ実行 | EC2 | Spring Boot アプリを実行 | public subnet、将来 Auto Scaling を検討 |
 | データベース | RDS for PostgreSQL | 永続データ（users/posts/... ） | private subnet、外部非公開 |
-| 画像ストレージ | S3（画像バケット） | 投稿画像本体を保存（DB は `s3_key` のみ） | CloudFront 経由で配信 |
+| 画像ストレージ | S3（画像バケット） | 投稿画像・アバター画像の本体を保存（DB はキーのみ） | 現状は署名付き URL で配信。将来 CloudFront (OAC) 経由へ |
 | リージョン | `ap-northeast-1` | 東京リージョン | - |
 
-### 11.4 将来検討事項
+### 11.4 ローカル開発での画像ストレージ
+
+本番の S3 の代わりに、docker-compose で **S3 互換の MinIO** を起動する（`docker compose up -d minio minio-init`）。アプリのコードは AWS SDK for Java v2 のままで、接続先の環境変数だけが変わる。
+
+| 環境変数 | ローカル | 本番 |
+|----------|----------|------|
+| `S3_ENDPOINT` | `http://minio:9000`（compose 内）/ `http://localhost:9000`（ホスト実行） | 空（＝本物の S3） |
+| `S3_PUBLIC_ENDPOINT` | `http://localhost:9000` | 空 |
+| `S3_ACCESS_KEY` / `S3_SECRET_KEY` | MinIO のログイン情報 | 空（EC2 の IAM ロールを使う） |
+| `S3_PATH_STYLE_ACCESS` | `true`（MinIO では必須） | `false` でよい |
+
+> **`S3_ENDPOINT` と `S3_PUBLIC_ENDPOINT` を分けている理由:** 署名付き URL を開くのはブラウザだが、SigV4 は Host ヘッダを署名対象に含むため、生成後に URL のホスト名を差し替えると署名が一致せず 403 になる。アプリからの到達先（`minio:9000`）とブラウザからの到達先（`localhost:9000`）が異なる以上、署名する側のエンドポイントを別に持つ必要がある。
+
+バケットの作成はアプリ起動時ではなく使い捨てコンテナ（`minio-init`）で行う。アプリに作らせると、本番の IAM ロールに `s3:CreateBucket` を与えることになり最小権限から外れるため。
+
+### 11.5 将来検討事項
 
 - EC2 の複数台構成＋Auto Scaling による可用性・スケーラビリティ向上
 - RDS の Multi-AZ 化・自動バックアップ運用

@@ -44,7 +44,8 @@
 
 | 項目 | 内容 | 備考 |
 |------|------|------|
-| 画像ストレージ | AWS S3 | 投稿画像を保存。DB には `s3_key` のみ記録。詳細は [09_infrastructure.md](09_infrastructure.md) |
+| 画像ストレージ | AWS S3（AWS SDK for Java v2） | 投稿画像・アバター画像を保存。DB にはキーのみ記録。詳細は [09_infrastructure.md](09_infrastructure.md) |
+| 画像ストレージ（ローカル） | MinIO | S3 互換。docker-compose で起動する。アプリのコードは AWS SDK のままで、接続先の設定だけが変わる |
 
 ## 本番インフラ（AWS・暫定前提）
 

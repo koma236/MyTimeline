@@ -24,6 +24,7 @@
 │     email         VARCHAR U │
 │     password_hash VARCHAR   │
 │     bio           VARCHAR   │
+│     avatar_key    VARCHAR   │
 │     created_at    DATETIME  │
 │     updated_at    DATETIME  │
 └──────┬────────┬────────┬────┘
@@ -73,6 +74,7 @@
 | email | VARCHAR(255) | ○ | メールアドレス。**UNIQUE** |
 | password_hash | VARCHAR(255) | ○ | ハッシュ化済みパスワード（平文保存しない） |
 | bio | VARCHAR(300) | - | 自己紹介。未設定は NULL |
+| avatar_key | VARCHAR(512) | - | アバター画像の S3 キー。画像本体は S3（ローカルは MinIO）に置き、DB はキーのみ持つ。未設定は NULL（[features/F07_profile.md](features/F07_profile.md)） |
 | created_at | DATETIME | ○ | 作成日時 |
 | updated_at | DATETIME | ○ | 更新日時 |
 
@@ -161,4 +163,7 @@
 - **集計方針:**
   - いいね数・コメント数・フォロー中数・フォロワー数は、対応テーブルの `COUNT` で取得する（初期フェーズでは非正規化カウンタを持たない）
 - **画像の扱い:**
-  - 画像本体は AWS S3 に保存し、DB には `post_images.s3_key` のみ保持する
+  - 画像本体は AWS S3 に保存し、DB には `post_images.s3_key`・`users.avatar_key` のみ保持する
+  - ローカル開発では S3 互換の MinIO を使う（docker-compose.yml）。アプリのコードは同じで、接続先の設定だけが変わる
+  - アバターのキーは `avatars/{userId}/{UUID}.{拡張子}`。ファイル名にユーザーの入力を使わず、更新のたびに採番し直す（[features/F07_profile.md](features/F07_profile.md) 5.）
+  - 画面に出す URL は期限付きの署名付き URL を都度発行する。バケットは公開しない
