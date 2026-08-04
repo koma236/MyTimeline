@@ -26,7 +26,7 @@ X（旧 Twitter）風のタイムライン型 SNS アプリ。テキストと画
 
 | レイヤー | 主な技術 |
 |---------|---------|
-| フロントエンド | React 19 + TypeScript 6 + Vite 8 + Tailwind CSS 3 + Axios（Lint: Oxlint） |
+| フロントエンド | React 19 + TypeScript 6 + Vite 8 + Tailwind CSS 3 + Axios（Lint: Oxlint / テスト: Vitest + React Testing Library） |
 | バックエンド | Java 25 + Spring Boot 4.0 + MyBatis + Flyway + Spring Security（JWT 認証）（静的解析: Checkstyle + SpotBugs） |
 | データベース | PostgreSQL 15（ローカル）/ PostgreSQL 16（RDS, 本番想定） |
 | 画像ストレージ | AWS S3 |
@@ -130,7 +130,7 @@ npm run dev
 # バックエンド: コンパイル + Checkstyle（規約）+ SpotBugs（バグ検出）+ テスト
 cd backend && ./gradlew build
 
-# フロントエンド: Oxlint + 型チェック（tsc）
+# フロントエンド: Oxlint + 型チェック（tsc）+ テスト（Vitest）
 cd frontend && npm run check
 ```
 
