@@ -4,13 +4,14 @@ import { toApiError } from '../api/client'
 import * as postsApi from '../api/posts'
 import * as usersApi from '../api/users'
 import { Avatar } from '../components/Avatar'
+import { FollowButton } from '../components/FollowButton'
 import { FormError } from '../components/FormError'
 import { InfiniteScrollSentinel } from '../components/InfiniteScrollSentinel'
 import { PostCard } from '../components/PostCard'
 import { useAuth } from '../auth/useAuth'
 import { useUserPosts } from '../hooks/useUserPosts'
 import type { PostResponse } from '../types/post'
-import type { ProfileResponse } from '../types/user'
+import type { FollowResponse, ProfileResponse } from '../types/user'
 
 /** 「2026年1月から利用」の表記。相対時刻ではなく年月で出す（登録日は古いほど相対表示が読みにくい） */
 function joinedLabel(createdAt: string): string {
@@ -20,10 +21,10 @@ function joinedLabel(createdAt: string): string {
 }
 
 /**
- * プロフィール画面（SCR-05・F07）。
+ * プロフィール画面（SCR-05・F07 / F06）。
  *
  * 投稿一覧はタイムラインと同じ仕組み（useUserPosts）なので、この画面でも
- * いいね・編集・削除がそのまま動く。フォローボタンは F06 で追加する。
+ * いいね・編集・削除がそのまま動く。
  */
 export function ProfilePage() {
   const { username } = useParams<{ username: string }>()
@@ -88,6 +89,24 @@ export function ProfilePage() {
     [removePost],
   )
 
+  /**
+   * フォロー状態が変わったときの反映（F06）。
+   *
+   * サーバーが返したフォロワー数をそのまま入れる。手元で +1 / -1 すると、
+   * 他の人のフォローで数がずれていたときにそのずれが残り続ける。
+   */
+  const handleFollowChange = useCallback((result: FollowResponse) => {
+    setProfile((current) =>
+      current === null
+        ? current
+        : {
+            ...current,
+            followerCount: result.followerCount,
+            followingByMe: result.followingByMe,
+          },
+    )
+  }, [])
+
   /** いいねの付け外し。HomePage と同じく、押す前の状態で POST / DELETE を呼び分ける。 */
   const handleToggleLike = useCallback(
     async (post: PostResponse) => {
@@ -139,18 +158,34 @@ export function ProfilePage() {
             <p className="mt-1 text-sm text-muted">{joinedLabel(profile.createdAt)}</p>
           </div>
 
-          {/* 他人のプロフィールにはフォローボタンが入る（F06 で実装） */}
-          {isMe && (
+          {isMe ? (
             <Link
               to="/settings/profile"
               className="shrink-0 rounded-full border border-border-strong px-4 py-1.5 text-sm font-bold transition-colors hover:bg-bg-subtle"
             >
               プロフィールを編集
             </Link>
+          ) : (
+            <FollowButton
+              userId={profile.id}
+              following={profile.followingByMe}
+              onChange={handleFollowChange}
+            />
           )}
         </div>
 
         {profile.bio && <p className="mt-3 whitespace-pre-wrap break-words">{profile.bio}</p>}
+
+        <p className="mt-3 flex gap-4 text-sm">
+          <span>
+            <span className="font-bold">{profile.followingCount}</span>
+            <span className="ml-1 text-muted">フォロー中</span>
+          </span>
+          <span>
+            <span className="font-bold">{profile.followerCount}</span>
+            <span className="ml-1 text-muted">フォロワー</span>
+          </span>
+        </p>
       </section>
 
       <h2 className="border-b border-border px-4 py-3 font-bold">投稿</h2>
