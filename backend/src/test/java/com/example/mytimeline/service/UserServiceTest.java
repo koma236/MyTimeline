@@ -3,7 +3,6 @@ package com.example.mytimeline.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
@@ -22,7 +21,6 @@ import com.example.mytimeline.storage.ImageValidator;
 import com.example.mytimeline.storage.InvalidImageException;
 import com.example.mytimeline.storage.S3StorageService;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -142,7 +140,7 @@ class UserServiceTest {
 
         // 逆順だと途中で失敗したときに「DB はキーを指すのに実体が無い」状態になる
         InOrder order = inOrder(storageService, userMapper);
-        order.verify(storageService).put(eq("avatars/1/new.png"), any(InputStream.class), anyLong(), anyString());
+        order.verify(storageService).put(eq("avatars/1/new.png"), any(byte[].class), anyString());
         order.verify(userMapper).updateAvatarKey(USER_ID, "avatars/1/new.png");
         order.verify(storageService).deleteQuietly("avatars/1/old.png");
     }

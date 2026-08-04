@@ -12,7 +12,6 @@ import com.example.mytimeline.storage.AvatarUrlFactory;
 import com.example.mytimeline.storage.ImageValidator;
 import com.example.mytimeline.storage.S3StorageService;
 import java.io.IOException;
-import java.io.InputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -105,8 +104,8 @@ public class UserService {
         String previousKey = user.getAvatarKey();
         String newKey = storageService.newAvatarKey(currentUserId, format);
 
-        try (InputStream content = file.getInputStream()) {
-            storageService.put(newKey, content, file.getSize(), format.contentType());
+        try {
+            storageService.put(newKey, file.getBytes(), format.contentType());
         } catch (IOException e) {
             throw new AvatarUploadException(e);
         }

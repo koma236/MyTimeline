@@ -1,7 +1,5 @@
 package com.example.mytimeline.storage;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.time.Duration;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -57,17 +55,21 @@ public class S3StorageService {
     /**
      * オブジェクトを保存する。
      *
-     * @throws IOException アップロードするストリームが読めなかった場合
+     * <p>{@link InputStream} ではなくバイト配列を受け取る。SDK は署名の計算と送信で
+     * 中身を二度読むため、巻き戻せないストリーム（{@code MultipartFile} のものがそう）を
+     * 渡すと「Content input stream does not support mark/reset」で失敗する。
+     * 呼び出し側が上限（{@link ImageValidator#MAX_BYTES}）を検証済みなので、
+     * 全体をメモリに載せても差し支えない。</p>
      */
-    public void put(String key, InputStream content, long contentLength, String contentType) throws IOException {
+    public void put(String key, byte[] content, String contentType) {
         PutObjectRequest request = PutObjectRequest.builder()
             .bucket(properties.bucket())
             .key(key)
             .contentType(contentType)
             .build();
 
-        s3Client.putObject(request, RequestBody.fromInputStream(content, contentLength));
-        log.debug("オブジェクトを保存しました: key={}", key);
+        s3Client.putObject(request, RequestBody.fromBytes(content));
+        log.debug("オブジェクトを保存しました: key={}, bytes={}", key, content.length);
     }
 
     /**
