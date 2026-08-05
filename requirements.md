@@ -1,4 +1,4 @@
-# 要件定義書サマリ - MCTIMELINE
+# 要件定義書サマリ - MYTIMELINE
 
 学習目的の X（旧 Twitter）風タイムライン型 SNS アプリ。本ファイルは要件定義の入口として、各詳細ドキュメントへのリンクをまとめる。
 
@@ -13,7 +13,7 @@
 | ID | 機能 | 概要 | 機能定義書 |
 |----|------|------|-----------|
 | F01 | 認証 | 新規登録・ログイン・ログアウト | [F01_auth.md](docs/features/F01_auth.md) |
-| F02 | タイムライン | 「フォロー中」「すべて」の 2 タブ | [F02_timeline.md](docs/features/F02_timeline.md) |
+| F02 | タイムライン | 「すべて」「フォロー中」の 2 タブ | [F02_timeline.md](docs/features/F02_timeline.md) |
 | F03 | 投稿・画像投稿 | テキスト＋画像（S3）・削除 | [F03_post.md](docs/features/F03_post.md) |
 | F04 | コメント | コメント・件数表示・削除 | [F04_comment.md](docs/features/F04_comment.md) |
 | F05 | いいね | いいね/取り消し・件数表示 | [F05_like.md](docs/features/F05_like.md) |

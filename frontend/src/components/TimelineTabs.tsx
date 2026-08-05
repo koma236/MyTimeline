@@ -1,8 +1,8 @@
 import type { TimelineTab } from '../types/post'
 
 const TABS: { value: TimelineTab; label: string }[] = [
-  { value: 'following', label: 'フォロー中' },
   { value: 'all', label: 'すべて' },
+  { value: 'following', label: 'フォロー中' },
 ]
 
 interface TimelineTabsProps {

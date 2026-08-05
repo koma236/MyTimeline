@@ -31,7 +31,7 @@ export function LoginPage() {
 
   return (
     <div className="mx-auto max-w-[400px] px-6 py-12">
-      <h1 className="mb-1 text-center text-[26px] font-extrabold tracking-[0.04em]">MCTIMELINE</h1>
+      <h1 className="mb-1 text-center text-[26px] font-extrabold tracking-[0.04em]">MYTIMELINE</h1>
       <p className="mb-7 text-center text-sm text-muted">いま起きていることを、シンプルに。</p>
 
       <form className="mb-5" onSubmit={handleSubmit} noValidate>
