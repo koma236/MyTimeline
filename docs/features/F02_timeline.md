@@ -23,7 +23,7 @@
 | GET | `/api/timeline/following?cursor=&limit=` | フォロー中タイムライン（自分＋フォロー先） | 要 |
 | GET | `/api/timeline/all?cursor=&limit=` | 全体タイムライン | 要 |
 
-**レスポンス（投稿要素）例:** `id, body, images[], author{id, username, display_name}, like_count, comment_count, liked_by_me, created_at`
+**レスポンス（投稿要素）例:** `id, body, image_urls[], author{id, username, display_name}, like_count, comment_count, liked_by_me, created_at`
 
 ## 5. データ
 - 投稿本体：`posts`、画像：`post_images`、投稿者：`users`
