@@ -1,12 +1,14 @@
 package com.example.mytimeline.controller;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -16,12 +18,15 @@ import com.example.mytimeline.config.SecurityConfig;
 import com.example.mytimeline.dto.PostAuthor;
 import com.example.mytimeline.dto.PostRequest;
 import com.example.mytimeline.dto.PostResponse;
+import com.example.mytimeline.exception.EmptyPostException;
 import com.example.mytimeline.exception.PostForbiddenException;
 import com.example.mytimeline.exception.PostNotFoundException;
 import com.example.mytimeline.security.CurrentUser;
 import com.example.mytimeline.security.JwtService;
 import com.example.mytimeline.service.PostService;
+import com.example.mytimeline.storage.InvalidImageException;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -30,6 +35,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
@@ -61,10 +67,15 @@ class PostControllerTest {
     }
 
     private static PostResponse postResponse(String body) {
+        return postResponse(body, List.of());
+    }
+
+    private static PostResponse postResponse(String body, List<String> imageUrls) {
         return new PostResponse(
             10L,
             body,
             new PostAuthor(CURRENT_USER_ID, "taro", "山田太郎", null),
+            imageUrls,
             3L,
             2L,
             true,
@@ -77,15 +88,19 @@ class PostControllerTest {
         return objectMapper.writeValueAsString(body);
     }
 
+    private static MockMultipartFile image(String name) {
+        return new MockMultipartFile("images", name, "image/jpeg", new byte[] {1, 2, 3});
+    }
+
     @Test
     @DisplayName("投稿の作成は 201 と作成された投稿を返す")
     void createReturnsCreated() throws Exception {
-        when(postService.create(eq(CURRENT_USER_ID), any())).thenReturn(postResponse("こんにちは"));
+        when(postService.create(eq(CURRENT_USER_ID), eq("こんにちは"), any()))
+            .thenReturn(postResponse("こんにちは"));
 
-        mockMvc.perform(post("/api/posts")
-                .header("Authorization", "Bearer " + VALID_TOKEN)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(json(new PostRequest("こんにちは"))))
+        mockMvc.perform(multipart("/api/posts")
+                .param("body", "こんにちは")
+                .header("Authorization", "Bearer " + VALID_TOKEN))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id").value(10))
             .andExpect(jsonPath("$.body").value("こんにちは"))
@@ -95,45 +110,73 @@ class PostControllerTest {
     }
 
     @Test
-    @DisplayName("本文が空の投稿は 400 で body のエラーを返す")
-    void createRejectsBlankBody() throws Exception {
-        mockMvc.perform(post("/api/posts")
-                .header("Authorization", "Bearer " + VALID_TOKEN)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(json(new PostRequest("   "))))
+    @DisplayName("画像付きの投稿はファイルがサービスへ渡り、画像 URL 付きで返る")
+    void createPassesImagesToService() throws Exception {
+        when(postService.create(eq(CURRENT_USER_ID), eq("画像付き"), anyList()))
+            .thenReturn(postResponse("画像付き", List.of("https://example.com/1.jpg")));
+
+        mockMvc.perform(multipart("/api/posts")
+                .file(image("a.jpg"))
+                .param("body", "画像付き")
+                .header("Authorization", "Bearer " + VALID_TOKEN))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.imageUrls[0]").value("https://example.com/1.jpg"));
+
+        verify(postService).create(eq(CURRENT_USER_ID), eq("画像付き"), anyList());
+    }
+
+    @Test
+    @DisplayName("本文が空で画像も無い投稿は 400 になる")
+    void createRejectsEmptyPost() throws Exception {
+        // 「どちらかがあればよい」の判定はサービスの責務。コントローラは例外を 400 に変換する
+        when(postService.create(eq(CURRENT_USER_ID), any(), any())).thenThrow(new EmptyPostException());
+
+        mockMvc.perform(multipart("/api/posts")
+                .param("body", "   ")
+                .header("Authorization", "Bearer " + VALID_TOKEN))
             .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.fieldErrors.body").exists());
+            .andExpect(jsonPath("$.message").value("本文を入力するか画像を添付してください"));
+    }
+
+    @Test
+    @DisplayName("受け付けられない画像は 400 で image のエラーを返す")
+    void createRejectsInvalidImage() throws Exception {
+        when(postService.create(eq(CURRENT_USER_ID), any(), anyList()))
+            .thenThrow(new InvalidImageException(InvalidImageException.TOO_MANY));
+
+        mockMvc.perform(multipart("/api/posts")
+                .file(image("a.jpg"))
+                .header("Authorization", "Bearer " + VALID_TOKEN))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.fieldErrors.image").value(InvalidImageException.TOO_MANY));
     }
 
     @Test
     @DisplayName("本文が 280 文字を超える投稿は 400 になる")
     void createRejectsTooLongBody() throws Exception {
-        mockMvc.perform(post("/api/posts")
-                .header("Authorization", "Bearer " + VALID_TOKEN)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(json(new PostRequest("あ".repeat(281)))))
+        mockMvc.perform(multipart("/api/posts")
+                .param("body", "あ".repeat(281))
+                .header("Authorization", "Bearer " + VALID_TOKEN))
             .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.fieldErrors.body").exists());
+            .andExpect(jsonPath("$.message").value("本文は280文字以内で入力してください"));
     }
 
     @Test
     @DisplayName("ちょうど 280 文字の投稿は受け付ける")
     void createAcceptsBoundaryLength() throws Exception {
-        when(postService.create(eq(CURRENT_USER_ID), any())).thenReturn(postResponse("あ".repeat(280)));
+        when(postService.create(eq(CURRENT_USER_ID), eq("あ".repeat(280)), any()))
+            .thenReturn(postResponse("あ".repeat(280)));
 
-        mockMvc.perform(post("/api/posts")
-                .header("Authorization", "Bearer " + VALID_TOKEN)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(json(new PostRequest("あ".repeat(280)))))
+        mockMvc.perform(multipart("/api/posts")
+                .param("body", "あ".repeat(280))
+                .header("Authorization", "Bearer " + VALID_TOKEN))
             .andExpect(status().isCreated());
     }
 
     @Test
     @DisplayName("未認証の投稿作成は 401 になる")
     void createRequiresAuthentication() throws Exception {
-        mockMvc.perform(post("/api/posts")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(json(new PostRequest("こんにちは"))))
+        mockMvc.perform(multipart("/api/posts").param("body", "こんにちは"))
             .andExpect(status().isUnauthorized())
             .andExpect(jsonPath("$.message").value("ログインが必要です"));
     }
@@ -189,12 +232,27 @@ class PostControllerTest {
     }
 
     @Test
-    @DisplayName("編集も本文のバリデーションを受ける")
-    void updateRejectsBlankBody() throws Exception {
+    @DisplayName("編集で本文を空にできるかはサービスの判定に従い、拒否なら 400 になる")
+    void updateRejectsEmptyPost() throws Exception {
+        // 画像が無い投稿の本文は空にできない（画像があれば空にできる）。判定はサービスの責務
+        when(postService.update(eq(10L), eq(CURRENT_USER_ID), any()))
+            .thenThrow(new EmptyPostException());
+
         mockMvc.perform(put("/api/posts/10")
                 .header("Authorization", "Bearer " + VALID_TOKEN)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json(new PostRequest(""))))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("本文を入力するか画像を添付してください"));
+    }
+
+    @Test
+    @DisplayName("編集も本文の文字数バリデーションを受ける")
+    void updateRejectsTooLongBody() throws Exception {
+        mockMvc.perform(put("/api/posts/10")
+                .header("Authorization", "Bearer " + VALID_TOKEN)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json(new PostRequest("あ".repeat(281)))))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.fieldErrors.body").exists());
     }
@@ -237,9 +295,22 @@ class PostControllerTest {
     }
 
     @Test
-    @DisplayName("JSON として壊れた本文の投稿は 400 を共通エラー形式で返す")
-    void createWithMalformedJsonReturnsBadRequest() throws Exception {
+    @DisplayName("multipart でなく JSON で投稿作成を呼ぶと 400 を共通エラー形式で返す")
+    void createWithJsonReturnsBadRequest() throws Exception {
+        // 作成は multipart 専用（PostController 参照）。旧クライアントの JSON は
+        // Spring 既定の ProblemDetail ではなく共通エラー形式で拒否されること
         mockMvc.perform(post("/api/posts")
+                .header("Authorization", "Bearer " + VALID_TOKEN)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json(new PostRequest("こんにちは"))))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("リクエストの形式が正しくありません"));
+    }
+
+    @Test
+    @DisplayName("JSON として壊れた本文の編集は 400 を共通エラー形式で返す")
+    void updateWithMalformedJsonReturnsBadRequest() throws Exception {
+        mockMvc.perform(put("/api/posts/10")
                 .header("Authorization", "Bearer " + VALID_TOKEN)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"body\":"))

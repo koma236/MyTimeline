@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.mytimeline.mapper.PostImageMapper">
+
+    <!-- created_at は DB のデフォルト値に任せる（posts と同じ）。
+         採番された id は使わないので書き戻しもしない -->
+    <insert id="insertAll">
+        INSERT INTO post_images (post_id, s3_key, position)
+        VALUES
+        <foreach item="image" collection="images" separator=",">
+            (#{image.postId}, #{image.s3Key}, #{image.position})
+        </foreach>
+    </insert>
+
+    <!--
+      post_id ごとに position 順で並べて返す。呼び出し側（PostService）は
+      これを post_id で束ねるだけでよく、並べ直しは要らない。
+      検索は uq_post_images_post_position の UNIQUE インデックス (post_id, position) が賄う。
+    -->
+    <select id="findByPostIds" resultType="com.example.mytimeline.model.PostImage">
+        SELECT id, post_id, s3_key, position, created_at
+        FROM post_images
+        <choose>
+            <when test="postIds.isEmpty()">
+                WHERE 1 = 0
+            </when>
+            <otherwise>
+                WHERE post_id IN
+                <foreach item="postId" collection="postIds" open="(" separator="," close=")">
+                    #{postId}
+                </foreach>
+            </otherwise>
+        </choose>
+        ORDER BY post_id, position
+    </select>
+
+</mapper>
