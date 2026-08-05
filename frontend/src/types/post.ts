@@ -16,6 +16,8 @@ export interface PostResponse {
   id: number
   body: string
   author: PostAuthor
+  /** 添付画像の閲覧用 URL（表示順・最大 4 件）。無ければ空配列（F03） */
+  imageUrls: string[]
   /** いいね数（F05） */
   likeCount: number
   /** コメント数（F04） */
@@ -37,7 +39,10 @@ export interface LikeResponse {
   likedByMe: boolean
 }
 
-/** 投稿の作成・編集で送る内容。どちらも本文だけなので共用する */
+/**
+ * 投稿の編集で送る内容。作成は画像を伴う multipart のためこの型は使わない
+ * （api/posts.ts の createPost 参照）。
+ */
 export interface PostRequest {
   body: string
 }

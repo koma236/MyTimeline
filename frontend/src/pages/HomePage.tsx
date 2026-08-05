@@ -71,7 +71,10 @@ export function HomePage() {
     <>
       <TimelineTabs active={tab} onChange={setTab} />
 
-      <PostComposer onSubmit={(body) => postsApi.createPost({ body })} onCreated={prependPost} />
+      <PostComposer
+        onSubmit={(body, images) => postsApi.createPost(body, images)}
+        onCreated={prependPost}
+      />
 
       {error && (
         <div className="px-4 py-6">

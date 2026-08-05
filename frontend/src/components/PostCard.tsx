@@ -53,7 +53,9 @@ export function PostCard({
   const canEdit = isMine && onUpdate !== undefined
   const canDelete = isMine && onDelete !== undefined
   const remaining = BODY_MAX_LENGTH - [...draft].length
-  const canSave = draft.trim().length > 0 && remaining >= 0 && !pending
+  // 画像付きの投稿は本文を空にできる（サーバー側の EmptyPostException と同じ判定）
+  const canSave =
+    (draft.trim().length > 0 || post.imageUrls.length > 0) && remaining >= 0 && !pending
 
   // メニューを開いたまま他所をクリックしたら閉じる
   useEffect(() => {
@@ -212,9 +214,37 @@ export function PostCard({
             </div>
           </form>
         ) : (
-          <p className={`mt-0.5 whitespace-pre-wrap break-words ${detail ? 'text-xl' : ''}`}>
-            {post.body}
-          </p>
+          post.body.length > 0 && (
+            <p className={`mt-0.5 whitespace-pre-wrap break-words ${detail ? 'text-xl' : ''}`}>
+              {post.body}
+            </p>
+          )
+        )}
+
+        {/* 画像は編集対象外（F03）なので、編集中もそのまま見せておく */}
+        {post.imageUrls.length > 0 && (
+          <div
+            className={`mt-2 grid gap-0.5 overflow-hidden rounded-2xl border border-border ${
+              post.imageUrls.length === 1 ? '' : 'grid-cols-2'
+            }`}
+          >
+            {post.imageUrls.map((url, index) => (
+              <img
+                key={url}
+                src={url}
+                alt={`投稿画像${index + 1}`}
+                loading="lazy"
+                className={`w-full object-cover ${
+                  post.imageUrls.length === 1
+                    ? 'max-h-[510px]'
+                    : `aspect-[4/3] ${
+                        // 3 枚のときは 1 枚目を横いっぱいにして歯抜けを作らない
+                        post.imageUrls.length === 3 && index === 0 ? 'col-span-2' : ''
+                      }`
+                }`}
+              />
+            ))}
+          </div>
         )}
 
         {/* 編集中は操作列を隠す。編集の保存・キャンセルと並ぶと押し間違えやすい */}

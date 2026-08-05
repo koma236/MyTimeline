@@ -14,9 +14,20 @@ import type {
  * インターセプタが行うので、ここでは認証を意識しなくてよい。
  */
 
-/** 投稿を作成する（F03 2. 機能詳細）。 */
-export async function createPost(request: PostRequest): Promise<PostResponse> {
-  const response = await apiClient.post<PostResponse>('/posts', request)
+/**
+ * 投稿を作成する（F03 2. 機能詳細）。
+ *
+ * 画像を添付できるように multipart で送る（画像なしでも同じ形式）。
+ * 画像の検証（形式・サイズ・枚数）はサーバー側が行い、拒否理由は
+ * fieldErrors.image で返る。
+ */
+export async function createPost(body: string, images: File[] = []): Promise<PostResponse> {
+  const formData = new FormData()
+  formData.append('body', body)
+  for (const image of images) {
+    formData.append('images', image)
+  }
+  const response = await apiClient.post<PostResponse>('/posts', formData)
   return response.data
 }
 
