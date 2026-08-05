@@ -46,11 +46,11 @@ React + Spring Boot プロジェクトの全体的なコード品質チェック
 
 ### インフラ (Terraform)
 
-**現状このリポジトリに `.tf` は存在しないためスキップしてよい。** 追加された場合に実施する。
+作業ディレクトリは `terraform/`（S3 画像バケット + EC2 用 IAM を定義。手順は `terraform/README.md`）。
 
 1. `terraform fmt -check -recursive` を実行してフォーマット違反を確認し、`terraform fmt -recursive` で修正する
 2. `terraform validate` を実行して構文・参照エラーがないことを確認する（必要に応じて先に `terraform init`）
-3. `terraform plan` を実行し、`.tf` ファイルと state の差分（ドリフト）がないことを確認する（"No changes" を期待。意図しない差分があれば原因を調査）
+3. `terraform plan` を実行し、`.tf` ファイルと state の差分（ドリフト）がないことを確認する（"No changes" を期待。意図しない差分があれば原因を調査）。AWS 認証情報がない環境では実行できないためスキップし、その旨を報告する
 4. 以下の観点でコードをレビューし、問題があれば修正する:
    - シークレットや認証情報（DB パスワード、API キーなど）が `.tf` にハードコードされていないか。`terraform.tfvars` 等の機密ファイルは `.gitignore` 対象になっているか
    - リソース参照が文字列補間 `"${aws_x.y.id}"` ではなく属性参照 `aws_x.y.id` になっているか

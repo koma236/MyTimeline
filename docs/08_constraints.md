@@ -17,7 +17,7 @@
 |----|------|------|-----------|
 | TBD-01 | 認証方式の詳細 | **JWT（HS256）方式に決定。** Spring Security をステートレス構成にし、`Authorization: Bearer <token>` で認証する。詳細は [F01_auth.md](features/F01_auth.md) | 決定済み |
 | TBD-02 | AWS サーバ構築の可否 | サーバ（EC2/RDS/ALB）を実際に構築するかは未確定。構築時は [09_infrastructure.md](09_infrastructure.md) の構成を前提とする | 未決 |
-| TBD-03 | IaC / デプロイ手順 | Terraform 等の IaC・詳細なデプロイ手順書は今回のドキュメント対象外。今後検討 | 未決 |
+| TBD-03 | IaC / デプロイ手順 | **一部着手。** S3 画像バケットと EC2 用 IAM（ロール・最小権限ポリシー・インスタンスプロファイル）は `terraform/` で IaC 化済み（手順は [terraform/README.md](../terraform/README.md)）。EC2 / RDS / ALB / CloudFront の IaC 化と詳細なデプロイ手順書は TBD-02 の判断待ち | 一部着手 |
 | TBD-04 | 投稿本文の上限文字数 | 暫定 280 文字。正式値は機能定義書で確定する | 未決 |
 | TBD-05 | 画像枚数・形式・サイズ上限 | **実装済みに決定。** 最大 4 枚 / JPEG・PNG / 1 枚あたり 2MB・縦横 4096px 以内（プロフィール画像と同じ検証を共用。[F03_post.md](features/F03_post.md) 6.） | 決定済み |
 | TBD-06 | プロフィール編集機能 | **実装済みに決定。** 表示名・自己紹介・プロフィール画像を編集可能とする。username とメールアドレスは変更不可（前者は参照先の URL、後者はログイン手段のため別手続き）。詳細は [F07_profile.md](features/F07_profile.md) | 決定済み |

@@ -2,7 +2,7 @@
 
 > **重要（前提）:** AWS でのサーバ構築を実際に行うかは**未確定**（[08_constraints.md](08_constraints.md) TBD-02）。
 > 本ドキュメントは、構築する場合に想定する **ALB + EC2 + RDS + S3** 構成を先行して整理したものであり、確定した本番構成ではない。
-> Terraform 等の IaC・詳細なデプロイ手順は今回のドキュメント対象外（TBD-03）。
+> IaC は S3 画像バケットと EC2 用 IAM のみ [terraform/](../terraform/README.md) で定義済み。それ以外の IaC・詳細なデプロイ手順は未着手（TBD-03）。
 
 ### 11.1 構成方針
 
@@ -54,7 +54,7 @@
 | ロードバランサー | ALB | `/api/*` を EC2 へルーティング。将来の複数台構成に対応 | ヘルスチェックを設定 |
 | アプリ実行 | EC2 | Spring Boot アプリを実行 | public subnet、将来 Auto Scaling を検討 |
 | データベース | RDS for PostgreSQL | 永続データ（users/posts/... ） | private subnet、外部非公開 |
-| 画像ストレージ | S3（画像バケット） | 投稿画像・プロフィール画像の本体を保存（DB はキーのみ） | 現状は署名付き URL で配信。将来 CloudFront (OAC) 経由へ |
+| 画像ストレージ | S3（画像バケット） | 投稿画像・プロフィール画像の本体を保存（DB はキーのみ） | [terraform/](../terraform/README.md) で定義済み。現状は署名付き URL で配信。将来 CloudFront (OAC) 経由へ |
 | リージョン | `ap-northeast-1` | 東京リージョン | - |
 
 ### 11.4 ローカル開発での画像ストレージ
@@ -76,5 +76,5 @@
 
 - EC2 の複数台構成＋Auto Scaling による可用性・スケーラビリティ向上
 - RDS の Multi-AZ 化・自動バックアップ運用
-- Terraform による IaC 化、CI/CD（GitHub Actions 等）での自動デプロイ
+- Terraform による IaC 化の拡大（S3 画像バケット + IAM は [terraform/](../terraform/README.md) で定義済み。EC2 / RDS / ALB / CloudFront が未着手）、CI/CD（GitHub Actions 等）での自動デプロイ
 - 独自ドメイン（Route 53 + ACM）の導入
