@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { Link } from 'react-router-dom'
 import * as postsApi from '../api/posts'
+import { ErrorBoundary } from '../components/ErrorBoundary'
 import { FormError } from '../components/FormError'
 import { InfiniteScrollSentinel } from '../components/InfiniteScrollSentinel'
 import { PostCard } from '../components/PostCard'
@@ -105,14 +106,16 @@ export function HomePage() {
         </div>
       )}
 
+      {/* 1 件でも壊れたデータが混ざったときに、他の投稿まで道連れにしない */}
       {posts.map((post) => (
-        <PostCard
-          key={post.id}
-          post={post}
-          onUpdate={handleUpdate}
-          onDelete={handleDelete}
-          onToggleLike={handleToggleLike}
-        />
+        <ErrorBoundary key={post.id}>
+          <PostCard
+            post={post}
+            onUpdate={handleUpdate}
+            onDelete={handleDelete}
+            onToggleLike={handleToggleLike}
+          />
+        </ErrorBoundary>
       ))}
 
       {/* 続きがあるときだけ番兵を置く。末尾に達したら何も出さずに終わる */}

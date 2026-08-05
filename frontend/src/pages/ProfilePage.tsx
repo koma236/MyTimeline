@@ -4,6 +4,7 @@ import { toApiError } from '../api/client'
 import * as postsApi from '../api/posts'
 import * as usersApi from '../api/users'
 import { Avatar } from '../components/Avatar'
+import { ErrorBoundary } from '../components/ErrorBoundary'
 import { FollowButton } from '../components/FollowButton'
 import { FormError } from '../components/FormError'
 import { InfiniteScrollSentinel } from '../components/InfiniteScrollSentinel'
@@ -209,14 +210,16 @@ export function ProfilePage() {
         </p>
       )}
 
+      {/* 1 件でも壊れたデータが混ざったときに、他の投稿まで道連れにしない */}
       {posts.map((post) => (
-        <PostCard
-          key={post.id}
-          post={post}
-          onUpdate={handleUpdate}
-          onDelete={handleDelete}
-          onToggleLike={handleToggleLike}
-        />
+        <ErrorBoundary key={post.id}>
+          <PostCard
+            post={post}
+            onUpdate={handleUpdate}
+            onDelete={handleDelete}
+            onToggleLike={handleToggleLike}
+          />
+        </ErrorBoundary>
       ))}
 
       {/* 続きがあるときだけ番兵を置く。末尾に達したら何も出さずに終わる */}

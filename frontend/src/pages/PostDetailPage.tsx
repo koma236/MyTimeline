@@ -5,6 +5,7 @@ import * as commentsApi from '../api/comments'
 import * as postsApi from '../api/posts'
 import { CommentCard } from '../components/CommentCard'
 import { CommentComposer } from '../components/CommentComposer'
+import { ErrorBoundary } from '../components/ErrorBoundary'
 import { FormError } from '../components/FormError'
 import { InfiniteScrollSentinel } from '../components/InfiniteScrollSentinel'
 import { PostCard } from '../components/PostCard'
@@ -152,13 +153,16 @@ export function PostDetailPage() {
         </Link>
       </div>
 
-      <PostCard
-        post={post}
-        detail
-        onUpdate={handleUpdate}
-        onDelete={handleDelete}
-        onToggleLike={handleToggleLike}
-      />
+      {/* 投稿本体が壊れていてもコメント欄は読めるようにしておく */}
+      <ErrorBoundary>
+        <PostCard
+          post={post}
+          detail
+          onUpdate={handleUpdate}
+          onDelete={handleDelete}
+          onToggleLike={handleToggleLike}
+        />
+      </ErrorBoundary>
 
       <CommentComposer
         onSubmit={(body) => commentsApi.createComment(post.id, { body })}
@@ -187,12 +191,13 @@ export function PostDetailPage() {
       )}
 
       {comments.map((comment) => (
-        <CommentCard
-          key={comment.id}
-          comment={comment}
-          onUpdate={handleCommentUpdate}
-          onDelete={handleCommentDelete}
-        />
+        <ErrorBoundary key={comment.id}>
+          <CommentCard
+            comment={comment}
+            onUpdate={handleCommentUpdate}
+            onDelete={handleCommentDelete}
+          />
+        </ErrorBoundary>
       ))}
 
       {/* 続きがあるときだけ番兵を置く。末尾に達したら何も出さずに終わる */}
