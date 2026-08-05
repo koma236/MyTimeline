@@ -16,3 +16,14 @@ frontend/node_modules/
 frontend/dist/
 frontend/.env
 frontend/.env.local
+
+# Terraform（state はアカウント ID 等を含むためコミットしない。
+# .terraform.lock.hcl はバージョン固定のため追跡する）
+terraform/.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+*.auto.tfvars
+crash.log
+crash.*.log
+*.tfplan
