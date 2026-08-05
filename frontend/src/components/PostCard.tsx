@@ -53,9 +53,15 @@ export function PostCard({
   const canEdit = isMine && onUpdate !== undefined
   const canDelete = isMine && onDelete !== undefined
   const remaining = BODY_MAX_LENGTH - [...draft].length
+  /*
+   * 型の上では必ず配列だが、それはバックエンドが期待どおり返す前提の話。
+   * フロントとバックエンドは別々にデプロイされ、受け取った JSON を実行時に
+   * 検証していないので、バージョンがずれるとフィールドごと欠けることがある
+   * （docs/09_infrastructure.md 11.5）。ここで空配列に寄せておく
+   */
+  const imageUrls = post.imageUrls ?? []
   // 画像付きの投稿は本文を空にできる（サーバー側の EmptyPostException と同じ判定）
-  const canSave =
-    (draft.trim().length > 0 || post.imageUrls.length > 0) && remaining >= 0 && !pending
+  const canSave = (draft.trim().length > 0 || imageUrls.length > 0) && remaining >= 0 && !pending
 
   // メニューを開いたまま他所をクリックしたら閉じる
   useEffect(() => {
@@ -222,24 +228,24 @@ export function PostCard({
         )}
 
         {/* 画像は編集対象外（F03）なので、編集中もそのまま見せておく */}
-        {post.imageUrls.length > 0 && (
+        {imageUrls.length > 0 && (
           <div
             className={`mt-2 grid gap-0.5 overflow-hidden rounded-2xl border border-border ${
-              post.imageUrls.length === 1 ? '' : 'grid-cols-2'
+              imageUrls.length === 1 ? '' : 'grid-cols-2'
             }`}
           >
-            {post.imageUrls.map((url, index) => (
+            {imageUrls.map((url, index) => (
               <img
                 key={url}
                 src={url}
                 alt={`投稿画像${index + 1}`}
                 loading="lazy"
                 className={`w-full object-cover ${
-                  post.imageUrls.length === 1
+                  imageUrls.length === 1
                     ? 'max-h-[510px]'
                     : `aspect-[4/3] ${
                         // 3 枚のときは 1 枚目を横いっぱいにして歯抜けを作らない
-                        post.imageUrls.length === 3 && index === 0 ? 'col-span-2' : ''
+                        imageUrls.length === 3 && index === 0 ? 'col-span-2' : ''
                       }`
                 }`}
               />
