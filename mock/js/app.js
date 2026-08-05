@@ -14,8 +14,8 @@
   var view = doc.getElementById('view');
   var header = doc.getElementById('header');
 
-  /** 「フォロー中 / すべて」タブの選択状態。詳細画面から戻っても保持する */
-  var timelineTab = 'following';
+  /** 「すべて / フォロー中」タブの選択状態。詳細画面から戻っても保持する */
+  var timelineTab = 'all';
 
   /* ============================================================== ルーター */
 
@@ -564,7 +564,7 @@
       var res = store.switchUser(Number(userSwitch.value));
       if (!res.ok) { ui.toast(res.error.message, true); return; }
       ui.toast(res.data.displayName + ' に切り替えました');
-      timelineTab = 'following';
+      timelineTab = 'all';
       refreshUserOptions();
       navigate('#/timeline');
     });

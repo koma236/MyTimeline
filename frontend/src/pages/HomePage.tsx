@@ -17,7 +17,7 @@ import type { PostResponse, TimelineTab } from '../types/post'
  * （読んでいる位置が飛ぶうえ、無限スクロールで読んだ分まで消えてしまうため）。
  */
 export function HomePage() {
-  const [tab, setTab] = useState<TimelineTab>('following')
+  const [tab, setTab] = useState<TimelineTab>('all')
   const {
     posts,
     loading,
