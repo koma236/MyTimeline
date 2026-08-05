@@ -1,4 +1,4 @@
-# MCTIMELINE プロトタイプモック
+# MYTIMELINE プロトタイプモック
 
 要件定義書（`docs/`）と機能定義書（`docs/features/F01〜F06`）の内容を、**HTML / CSS / 素の JavaScript だけ**で触れる形にした静的プロトタイプです。本実装（React + Spring Boot + PostgreSQL + S3）に入る前に、画面遷移・操作フロー・バリデーション文言を実際に触って検証することを目的としています。
 

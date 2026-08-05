@@ -12,7 +12,7 @@ export function Header() {
     <header className="sticky top-0 z-20 border-b border-border bg-bg/90 backdrop-blur">
       <div className="mx-auto flex max-w-column items-center justify-between px-4 py-2.5">
         <Link to="/" className="text-[19px] font-extrabold tracking-[0.04em]">
-          MCTIMELINE
+          MYTIMELINE
         </Link>
         <nav className="flex items-center gap-1">
           {/* ユーザー検索（SCR-06）。フォローする相手を見つける入口 */}
