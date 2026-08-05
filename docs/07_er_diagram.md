@@ -154,8 +154,10 @@
   - `refresh_tokens.token_hash` は一意
   - `likes(post_id, user_id)` は複合 UNIQUE（同一ユーザーの二重いいねを防止）
   - `follows(follower_id, followee_id)` は複合 UNIQUE（二重フォローを防止）
+  - `post_images(post_id, position)` は複合 UNIQUE（同じ投稿の同じ表示順に 2 枚入らない）
 - **チェック制約:**
   - `follows.follower_id <> followee_id`（自分自身はフォロー不可）
+  - `post_images.position` は 0〜3（最大 4 枚。F03 6.）
 - **カスケード削除:**
   - 投稿削除時、配下の `post_images` / `comments` / `likes` を削除する
   - ユーザー削除時、配下の `refresh_tokens` を削除する
@@ -166,4 +168,5 @@
   - 画像本体は AWS S3 に保存し、DB には `post_images.s3_key`・`users.avatar_key` のみ保持する
   - ローカル開発では S3 互換の MinIO を使う（docker-compose.yml）。アプリのコードは同じで、接続先の設定だけが変わる
   - プロフィール画像のキーは `avatars/{userId}/{UUID}.{拡張子}`。ファイル名にユーザーの入力を使わず、更新のたびに採番し直す（[features/F07_profile.md](features/F07_profile.md) 5.）
+  - 投稿画像のキーは `posts/{userId}/{UUID}.{拡張子}`（[features/F03_post.md](features/F03_post.md) 5.）。差し替えは無く、投稿削除時にアプリが S3 からも削除する
   - 画面に出す URL は期限付きの署名付き URL を都度発行する。バケットは公開しない

@@ -52,6 +52,7 @@ class TimelineControllerTest {
             10L,
             "こんにちは",
             new PostAuthor(CURRENT_USER_ID, "taro", "山田太郎", null),
+            List.of(),
             5L,
             1L,
             false,

@@ -12,6 +12,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -175,15 +176,24 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 本文が空で画像も無い投稿 → 400。
+     */
+    @ExceptionHandler(EmptyPostException.class)
+    public ResponseEntity<ErrorResponse> handleEmptyPost(EmptyPostException e) {
+        return ResponseEntity.badRequest().body(ErrorResponse.of(e.getMessage()));
+    }
+
+    /**
      * アップロードされた画像が受け付けられない → 400。
      *
-     * <p>拒否理由を {@code fieldErrors} の {@code avatar} に入れ、他の入力エラーと同じ形にする。
-     * クライアントはファイル選択欄の直下にそのまま表示できる。</p>
+     * <p>拒否理由を {@code fieldErrors} の {@code image} に入れ、他の入力エラーと同じ形にする。
+     * クライアントはファイル選択欄の直下にそのまま表示できる。
+     * アバター（F07）と投稿画像（F03）のどちらの検証でも同じキーを使う。</p>
      */
     @ExceptionHandler(InvalidImageException.class)
     public ResponseEntity<ErrorResponse> handleInvalidImage(InvalidImageException e) {
         return ResponseEntity.badRequest()
-            .body(ErrorResponse.of("入力内容を確認してください", Map.of("avatar", e.getMessage())));
+            .body(ErrorResponse.of("入力内容を確認してください", Map.of("image", e.getMessage())));
     }
 
     /**
@@ -208,12 +218,14 @@ public class GlobalExceptionHandler {
      * 壊れた JSON・型の合わないパス変数 / クエリ・必須パートの欠落 → 400。
      *
      * <p>例: {@code /api/posts/abc}（id が数値でない）、本文が JSON として解釈できない、
-     * multipart なのに {@code file} パートが無い。いずれもリクエストの作り方の誤りなので、
+     * multipart なのに {@code file} パートが無い、multipart で受けるエンドポイントに
+     * JSON を送ってきた。いずれもリクエストの作り方の誤りなので、
      * 項目単位ではなく全体メッセージだけ返す。
      * 解析エラーの詳細はサーバー内部の情報を含みうるためレスポンスには載せない。</p>
      */
     @ExceptionHandler({
         HttpMessageNotReadableException.class,
+        HttpMediaTypeNotSupportedException.class,
         MethodArgumentTypeMismatchException.class,
         MissingServletRequestPartException.class,
     })

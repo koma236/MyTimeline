@@ -82,7 +82,8 @@ export function ProfileEditPage() {
       setPreview(null)
     } catch (caught) {
       const apiError = toApiError(caught)
-      setAvatarError(apiError.fieldErrors?.avatar ?? apiError.message)
+      // 画像の拒否理由は image に入る（投稿画像と共通のキー。GlobalExceptionHandler 参照）
+      setAvatarError(apiError.fieldErrors?.image ?? apiError.message)
       setPreview(null)
     } finally {
       setAvatarPending(false)

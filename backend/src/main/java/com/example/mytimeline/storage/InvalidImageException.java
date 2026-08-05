@@ -14,6 +14,7 @@ public class InvalidImageException extends RuntimeException {
     public static final String TOO_LARGE = "画像サイズは2MB以内にしてください";
     public static final String UNSUPPORTED_FORMAT = "画像はJPEGまたはPNGを選択してください";
     public static final String TOO_LARGE_DIMENSION = "画像の縦横は4096ピクセル以内にしてください";
+    public static final String TOO_MANY = "画像は4枚まで添付できます";
 
     public InvalidImageException(String message) {
         super(message);

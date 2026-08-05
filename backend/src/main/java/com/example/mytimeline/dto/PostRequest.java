@@ -1,21 +1,23 @@
 package com.example.mytimeline.dto;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 /**
- * 投稿の作成・編集リクエスト（docs/features/F03_post.md 6. バリデーション / 制約）。
+ * 投稿の編集リクエスト（docs/features/F03_post.md 6. バリデーション / 制約）。
  *
- * <p>作成と編集で受け取る内容が本文だけで同じなので 1 つの record を共用している。</p>
+ * <p>作成は画像を伴う multipart のため、この record は編集（PUT）でのみ使う。
+ * {@code @NotBlank} を付けないのは、画像付きの投稿では本文が空でも成立するため。
+ * 「本文が空かつ画像も無い場合は不可」の判定は 2 つの入力にまたがるので
+ * サービス側（{@code PostService}）が行う。</p>
  *
- * <p>本文の上限 280 文字は docs/08_constraints.md TBD-04 の暫定値。
- * 画像添付は未実装のため、現状は「本文が空なら投稿できない」で足りる
- * （画像対応時は「本文が空かつ画像も無い場合は不可」に変わる）。</p>
+ * <p>本文の上限 280 文字は docs/08_constraints.md TBD-04 の暫定値。</p>
  */
 public record PostRequest(
 
-    @NotBlank(message = "本文を入力してください")
-    @Size(max = 280, message = "本文は280文字以内で入力してください")
+    @Size(max = PostRequest.BODY_MAX_LENGTH, message = "本文は280文字以内で入力してください")
     String body
 ) {
+
+    /** 本文の上限。作成（multipart）のパラメータ検証でも同じ値を使う。 */
+    public static final int BODY_MAX_LENGTH = 280;
 }

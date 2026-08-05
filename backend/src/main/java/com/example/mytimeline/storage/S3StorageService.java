@@ -27,6 +27,8 @@ public class S3StorageService {
 
     private static final String AVATAR_KEY_PREFIX = "avatars";
 
+    private static final String POST_IMAGE_KEY_PREFIX = "posts";
+
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
     private final S3Properties properties;
@@ -50,6 +52,16 @@ public class S3StorageService {
      */
     public String newAvatarKey(Long userId, ImageValidator.ImageFormat format) {
         return "%s/%d/%s.%s".formatted(AVATAR_KEY_PREFIX, userId, UUID.randomUUID(), format.extension());
+    }
+
+    /**
+     * 投稿画像のキーを採番する。
+     *
+     * <p>UUID を使う理由は {@link #newAvatarKey} と同じ（ユーザー入力を混ぜない・衝突しない）。
+     * アバターと違い差し替えは無く、投稿削除までキーは変わらない。</p>
+     */
+    public String newPostImageKey(Long userId, ImageValidator.ImageFormat format) {
+        return "%s/%d/%s.%s".formatted(POST_IMAGE_KEY_PREFIX, userId, UUID.randomUUID(), format.extension());
     }
 
     /**

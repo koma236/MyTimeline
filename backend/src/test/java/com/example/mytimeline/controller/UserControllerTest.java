@@ -235,7 +235,7 @@ class UserControllerTest {
         mockMvc.perform(avatarUpload(new MockMultipartFile("file", "a.txt", "text/plain", new byte[] {1}))
                 .header("Authorization", "Bearer " + VALID_TOKEN))
             .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.fieldErrors.avatar").value(InvalidImageException.UNSUPPORTED_FORMAT));
+            .andExpect(jsonPath("$.fieldErrors.image").value(InvalidImageException.UNSUPPORTED_FORMAT));
     }
 
     @Test

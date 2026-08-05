@@ -5,7 +5,10 @@ import com.example.mytimeline.dto.PostResponse;
 import com.example.mytimeline.security.CurrentUser;
 import com.example.mytimeline.service.PostService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
+import java.util.List;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -15,10 +18,13 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
- * 投稿エンドポイント（docs/features/F03_post.md 4. API エンドポイント案）。
+ * 投稿エンドポイント（docs/features/F03_post.md 4. API エンドポイント）。
  *
  * <p>いずれも認証必須。{@code SecurityConfig} が permitAll を列挙した残りをすべて
  * {@code authenticated()} にしているため、ここに個別の設定は要らない。</p>
@@ -33,13 +39,27 @@ public class PostController {
         this.postService = postService;
     }
 
-    @PostMapping
+    /**
+     * 投稿を作成する。画像を添付できるように multipart で受ける（F03）。
+     *
+     * <p>画像なしの投稿も同じ形式で受ける。JSON と multipart の 2 経路を持つと
+     * バリデーションが二重になるため、作成はこの 1 経路に揃えている。
+     * 本文と画像は独立した入力なので、JSON パートではなく素のフィールドで受ける
+     * （クライアントは FormData に詰めるだけでよい）。</p>
+     *
+     * <p>「本文が空かつ画像も無い場合は投稿不可」は 2 つの入力にまたがる制約のため、
+     * アノテーションではなくサービス側で検証する。</p>
+     */
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<PostResponse> create(
         @AuthenticationPrincipal CurrentUser currentUser,
-        @Valid @RequestBody PostRequest request
+        @RequestParam(value = "body", required = false)
+        @Size(max = PostRequest.BODY_MAX_LENGTH, message = "本文は280文字以内で入力してください")
+        String body,
+        @RequestPart(value = "images", required = false) List<MultipartFile> images
     ) {
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(postService.create(currentUser.id(), request));
+            .body(postService.create(currentUser.id(), body, images));
     }
 
     /**
