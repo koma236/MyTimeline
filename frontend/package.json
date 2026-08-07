@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "npm run lint && npm run typecheck && npm run test",
+    "generate:api": "openapi-typescript ../docs/api/openapi.json -o src/types/api.generated.ts",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -29,11 +30,17 @@
     "@vitejs/plugin-react": "^6.0.3",
     "autoprefixer": "^10.5.4",
     "jsdom": "^29.1.1",
+    "openapi-typescript": "^7.13.0",
     "oxlint": "^1.71.0",
     "postcss": "^8.5.23",
     "tailwindcss": "^3.4.19",
     "typescript": "~6.0.2",
     "vite": "^8.1.1",
     "vitest": "^4.1.10"
+  },
+  "overrides": {
+    "openapi-typescript": {
+      "typescript": "$typescript"
+    }
   }
 }

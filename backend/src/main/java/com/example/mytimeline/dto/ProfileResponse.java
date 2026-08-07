@@ -2,6 +2,7 @@ package com.example.mytimeline.dto;
 
 import com.example.mytimeline.model.User;
 import java.time.LocalDateTime;
+import org.jspecify.annotations.Nullable;
 
 /**
  * 他人にも見せるプロフィール（docs/features/F07_profile.md 4. / 画面 SCR-05）。
@@ -19,8 +20,8 @@ public record ProfileResponse(
     Long id,
     String username,
     String displayName,
-    String bio,
-    String avatarUrl,
+    @Nullable String bio,
+    @Nullable String avatarUrl,
     LocalDateTime createdAt,
     long followingCount,
     long followerCount,

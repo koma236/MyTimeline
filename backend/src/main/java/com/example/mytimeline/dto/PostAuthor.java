@@ -1,6 +1,7 @@
 package com.example.mytimeline.dto;
 
 import com.example.mytimeline.model.User;
+import org.jspecify.annotations.Nullable;
 
 /**
  * 投稿レスポンスに埋め込む投稿者情報。
@@ -14,7 +15,7 @@ public record PostAuthor(
     Long id,
     String username,
     String displayName,
-    String avatarUrl
+    @Nullable String avatarUrl
 ) {
 
     /**
