@@ -26,6 +26,8 @@ ext {
 	jjwtVersion = '0.12.6'
 	// AWS SDK も Spring Boot の BOM 管理外。個別に版を書くとモジュール間でずれるので BOM を使う
 	awsSdkVersion = '2.35.11'
+	// springdoc は 3.x 系が Spring Boot 4 対応（2.x 系は Boot 3 用なので上げないこと）
+	springdocVersion = '3.1.0'
 }
 
 checkstyle {
@@ -73,6 +75,8 @@ dependencies {
 	// url-connection-client を足すと同期実装が 2 つになり、起動時に
 	// Multiple HTTP implementations were found で落ちるので追加しないこと
 	implementation 'software.amazon.awssdk:s3'
+	// API 仕様書（OpenAPI / Swagger UI）をコントローラと DTO から自動生成する
+	implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springdocVersion}"
 	runtimeOnly "io.jsonwebtoken:jjwt-impl:${jjwtVersion}"
 	runtimeOnly "io.jsonwebtoken:jjwt-jackson:${jjwtVersion}"
 	runtimeOnly 'org.postgresql:postgresql'

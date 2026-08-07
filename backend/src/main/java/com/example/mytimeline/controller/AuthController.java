@@ -7,6 +7,7 @@ import com.example.mytimeline.dto.UserResponse;
 import com.example.mytimeline.security.CurrentUser;
 import com.example.mytimeline.security.RefreshCookieFactory;
 import com.example.mytimeline.service.AuthService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -38,12 +39,16 @@ public class AuthController {
         this.refreshCookieFactory = refreshCookieFactory;
     }
 
+    // 空の @SecurityRequirements は「このエンドポイントは認証不要」を API 仕様書に反映する
+    // （OpenApiConfig で全体の既定を JWT Bearer にしているため、permitAll 側で打ち消す）
+    @SecurityRequirements
     @PostMapping("/signup")
     public ResponseEntity<AuthResponse> signup(@Valid @RequestBody SignupRequest request) {
         AuthService.AuthResult result = authService.signup(request);
         return withRefreshCookie(ResponseEntity.status(HttpStatus.CREATED), result);
     }
 
+    @SecurityRequirements
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         AuthService.AuthResult result = authService.login(request);
@@ -58,6 +63,7 @@ public class AuthController {
      * アクセストークンが切れた状態で呼ばれるのが本来の用途なので、
      * 認証必須にすると成立しない。</p>
      */
+    @SecurityRequirements
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponse> refresh(
         @CookieValue(name = RefreshCookieFactory.COOKIE_NAME, required = false) String refreshToken
@@ -77,6 +83,7 @@ public class AuthController {
      * 「結果としてログアウト状態になること」であり、失敗を伝える意味がない。
      * また、成否を返すとトークンの存在有無を推測できてしまう。</p>
      */
+    @SecurityRequirements
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(
         @CookieValue(name = RefreshCookieFactory.COOKIE_NAME, required = false) String refreshToken

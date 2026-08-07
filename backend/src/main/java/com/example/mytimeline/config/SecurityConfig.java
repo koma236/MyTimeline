@@ -62,6 +62,9 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/signup", "/api/auth/login").permitAll()
                 .requestMatchers("/api/auth/refresh", "/api/auth/logout").permitAll()
                 .requestMatchers("/actuator/health", "/error").permitAll()
+                // API 仕様書（springdoc / Swagger UI）。本番では公開しないが、認可ではなく
+                // springdoc 側の無効化（SPRINGDOC_ENABLED=false → 404）で止める
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 // 上記以外はすべてログイン必須。機能追加時に個別の permitAll を足さない限り保護される
                 .anyRequest().authenticated()
             )
