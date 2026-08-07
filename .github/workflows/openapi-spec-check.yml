@@ -1,0 +1,37 @@
+# API 実装と docs/api/openapi.json の乖離を検知する。
+#
+# OpenApiSpecExportTest が仕様書を再生成するので、コミット済みのファイルと
+# 差分が出たら「コードを変えたのに仕様書を更新していない」として失敗させる。
+# 落ちたら手元で backend/ の `./gradlew test --tests "*.OpenApiSpecExportTest"` を
+# 実行し、更新された docs/api/openapi.json をコミットすること。
+name: OpenAPI spec check
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          # build.gradle の toolchain と合わせる
+          java-version: '25'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: 仕様書を再生成する
+        working-directory: backend
+        run: ./gradlew test --tests "*.OpenApiSpecExportTest"
+
+      - name: コミット済みの仕様書と一致するか検査する
+        run: |
+          if ! git diff --exit-code -- docs/api/openapi.json; then
+            echo "::error::docs/api/openapi.json が実装と一致していません。" \
+              "backend/ で ./gradlew test --tests \"*.OpenApiSpecExportTest\" を実行し、更新をコミットしてください。"
+            exit 1
+          fi
