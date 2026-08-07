@@ -1,6 +1,7 @@
 package com.example.mytimeline.dto;
 
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /**
  * タイムラインの 1 ページ分（docs/features/F02_timeline.md 4. API エンドポイント案）。
@@ -13,6 +14,6 @@ import java.util.List;
  */
 public record TimelineResponse(
     List<PostResponse> posts,
-    Long nextCursor
+    @Nullable Long nextCursor
 ) {
 }

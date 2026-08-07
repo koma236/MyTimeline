@@ -2,6 +2,7 @@ package com.example.mytimeline.dto;
 
 import com.example.mytimeline.model.User;
 import java.time.LocalDateTime;
+import org.jspecify.annotations.Nullable;
 
 /**
  * クライアントへ返すユーザー情報。
@@ -18,8 +19,8 @@ public record UserResponse(
     String username,
     String displayName,
     String email,
-    String bio,
-    String avatarUrl,
+    @Nullable String bio,
+    @Nullable String avatarUrl,
     LocalDateTime createdAt
 ) {
 

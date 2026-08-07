@@ -1,6 +1,7 @@
 package com.example.mytimeline.dto;
 
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /**
  * 投稿 1 件分のコメントの 1 ページ（docs/features/F04_comment.md 4. API エンドポイント案）。
@@ -13,6 +14,6 @@ import java.util.List;
  */
 public record CommentListResponse(
     List<CommentResponse> comments,
-    Long nextCursor
+    @Nullable Long nextCursor
 ) {
 }

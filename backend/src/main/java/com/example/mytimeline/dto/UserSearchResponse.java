@@ -1,6 +1,7 @@
 package com.example.mytimeline.dto;
 
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /**
  * ユーザー検索の 1 ページ分（docs/features/F06_follow.md 4. / 画面 SCR-06）。
@@ -14,6 +15,6 @@ import java.util.List;
  */
 public record UserSearchResponse(
     List<UserSummary> users,
-    Long nextCursor
+    @Nullable Long nextCursor
 ) {
 }

@@ -1,6 +1,7 @@
 package com.example.mytimeline.dto;
 
 import com.example.mytimeline.model.User;
+import org.jspecify.annotations.Nullable;
 
 /**
  * ユーザー検索結果の 1 件（docs/features/F06_follow.md 4. / 画面 SCR-06）。
@@ -16,8 +17,8 @@ public record UserSummary(
     Long id,
     String username,
     String displayName,
-    String bio,
-    String avatarUrl,
+    @Nullable String bio,
+    @Nullable String avatarUrl,
     boolean followingByMe
 ) {
 

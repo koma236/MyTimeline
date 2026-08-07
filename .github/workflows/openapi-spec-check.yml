@@ -1,9 +1,14 @@
-# API 実装と docs/api/openapi.json の乖離を検知する。
+# API 実装と docs/api/openapi.json、そこから生成するフロントエンドの型の乖離を検知する。
 #
-# OpenApiSpecExportTest が仕様書を再生成するので、コミット済みのファイルと
-# 差分が出たら「コードを変えたのに仕様書を更新していない」として失敗させる。
+# check ジョブ: OpenApiSpecExportTest が仕様書を再生成するので、コミット済みの
+# ファイルと差分が出たら「コードを変えたのに仕様書を更新していない」として失敗させる。
 # 落ちたら手元で backend/ の `./gradlew test --tests "*.OpenApiSpecExportTest"` を
 # 実行し、更新された docs/api/openapi.json をコミットすること。
+#
+# frontend-types ジョブ: 仕様書から src/types/api.generated.ts を再生成して同様に
+# 差分を検査し、さらに typecheck で手書き型との一致（src/types/apiContract.ts）を
+# 検証する。落ちたら frontend/ で `npm run generate:api` を実行し、生成型の変更と
+# それに合わせた手書き型の修正をコミットすること。
 name: OpenAPI spec check
 
 on:
@@ -35,3 +40,34 @@ jobs:
               "backend/ で ./gradlew test --tests \"*.OpenApiSpecExportTest\" を実行し、更新をコミットしてください。"
             exit 1
           fi
+
+  frontend-types:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: 依存関係をインストールする
+        working-directory: frontend
+        run: npm ci
+
+      - name: 仕様書から型を再生成する
+        working-directory: frontend
+        run: npm run generate:api
+
+      - name: コミット済みの生成型と一致するか検査する
+        run: |
+          if ! git diff --exit-code -- frontend/src/types/api.generated.ts; then
+            echo "::error::frontend/src/types/api.generated.ts が docs/api/openapi.json と一致していません。" \
+              "frontend/ で npm run generate:api を実行し、更新をコミットしてください。"
+            exit 1
+          fi
+
+      - name: 手書き型と生成型の一致を検査する（apiContract.ts）
+        working-directory: frontend
+        run: npm run typecheck

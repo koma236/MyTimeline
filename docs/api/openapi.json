@@ -771,7 +771,8 @@
           "user" : {
             "$ref" : "#/components/schemas/UserResponse"
           }
-        }
+        },
+        "required" : [ "accessToken", "user" ]
       },
       "CommentListResponse" : {
         "type" : "object",
@@ -783,10 +784,11 @@
             }
           },
           "nextCursor" : {
-            "type" : "integer",
+            "type" : [ "integer", "null" ],
             "format" : "int64"
           }
-        }
+        },
+        "required" : [ "comments", "nextCursor" ]
       },
       "CommentRequest" : {
         "type" : "object",
@@ -824,7 +826,8 @@
             "type" : "string",
             "format" : "date-time"
           }
-        }
+        },
+        "required" : [ "author", "body", "createdAt", "id", "postId", "updatedAt" ]
       },
       "FollowResponse" : {
         "type" : "object",
@@ -836,7 +839,8 @@
           "followingByMe" : {
             "type" : "boolean"
           }
-        }
+        },
+        "required" : [ "followerCount", "followingByMe" ]
       },
       "LikeResponse" : {
         "type" : "object",
@@ -848,7 +852,8 @@
           "likedByMe" : {
             "type" : "boolean"
           }
-        }
+        },
+        "required" : [ "likeCount", "likedByMe" ]
       },
       "LoginRequest" : {
         "type" : "object",
@@ -868,7 +873,7 @@
         "type" : "object",
         "properties" : {
           "avatarUrl" : {
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "displayName" : {
             "type" : "string"
@@ -880,7 +885,8 @@
           "username" : {
             "type" : "string"
           }
-        }
+        },
+        "required" : [ "avatarUrl", "displayName", "id", "username" ]
       },
       "PostRequest" : {
         "type" : "object",
@@ -890,7 +896,8 @@
             "maxLength" : 280,
             "minLength" : 0
           }
-        }
+        },
+        "required" : [ "body" ]
       },
       "PostResponse" : {
         "type" : "object",
@@ -930,16 +937,17 @@
             "type" : "string",
             "format" : "date-time"
           }
-        }
+        },
+        "required" : [ "author", "body", "commentCount", "createdAt", "id", "imageUrls", "likeCount", "likedByMe", "updatedAt" ]
       },
       "ProfileResponse" : {
         "type" : "object",
         "properties" : {
           "avatarUrl" : {
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "bio" : {
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "createdAt" : {
             "type" : "string",
@@ -966,7 +974,8 @@
           "username" : {
             "type" : "string"
           }
-        }
+        },
+        "required" : [ "avatarUrl", "bio", "createdAt", "displayName", "followerCount", "followingByMe", "followingCount", "id", "username" ]
       },
       "SignupRequest" : {
         "type" : "object",
@@ -999,7 +1008,7 @@
         "type" : "object",
         "properties" : {
           "nextCursor" : {
-            "type" : "integer",
+            "type" : [ "integer", "null" ],
             "format" : "int64"
           },
           "posts" : {
@@ -1008,7 +1017,8 @@
               "$ref" : "#/components/schemas/PostResponse"
             }
           }
-        }
+        },
+        "required" : [ "nextCursor", "posts" ]
       },
       "UpdateProfileRequest" : {
         "type" : "object",
@@ -1024,16 +1034,16 @@
             "minLength" : 0
           }
         },
-        "required" : [ "displayName" ]
+        "required" : [ "bio", "displayName" ]
       },
       "UserResponse" : {
         "type" : "object",
         "properties" : {
           "avatarUrl" : {
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "bio" : {
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "createdAt" : {
             "type" : "string",
@@ -1052,13 +1062,14 @@
           "username" : {
             "type" : "string"
           }
-        }
+        },
+        "required" : [ "avatarUrl", "bio", "createdAt", "displayName", "email", "id", "username" ]
       },
       "UserSearchResponse" : {
         "type" : "object",
         "properties" : {
           "nextCursor" : {
-            "type" : "integer",
+            "type" : [ "integer", "null" ],
             "format" : "int64"
           },
           "users" : {
@@ -1067,16 +1078,17 @@
               "$ref" : "#/components/schemas/UserSummary"
             }
           }
-        }
+        },
+        "required" : [ "nextCursor", "users" ]
       },
       "UserSummary" : {
         "type" : "object",
         "properties" : {
           "avatarUrl" : {
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "bio" : {
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "displayName" : {
             "type" : "string"
@@ -1091,7 +1103,8 @@
           "username" : {
             "type" : "string"
           }
-        }
+        },
+        "required" : [ "avatarUrl", "bio", "displayName", "followingByMe", "id", "username" ]
       }
     },
     "securitySchemes" : {
