@@ -1,0 +1,1105 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "description" : "X（旧 Twitter）風タイムライン SNS の REST API。認証必須のエンドポイントは Authorize ボタンからアクセストークンを設定して試せる。",
+    "title" : "MyTimeline API",
+    "version" : "v1"
+  },
+  "servers" : [ {
+    "url" : "http://localhost",
+    "description" : "Generated server url"
+  } ],
+  "security" : [ {
+    "bearer-jwt" : [ ]
+  } ],
+  "paths" : {
+    "/api/auth/login" : {
+      "post" : {
+        "operationId" : "login",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuthResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [ ],
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/auth/logout" : {
+      "post" : {
+        "operationId" : "logout",
+        "parameters" : [ {
+          "in" : "cookie",
+          "name" : "refreshToken",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ ],
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/auth/me" : {
+      "get" : {
+        "operationId" : "me",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/auth/refresh" : {
+      "post" : {
+        "operationId" : "refresh",
+        "parameters" : [ {
+          "in" : "cookie",
+          "name" : "refreshToken",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuthResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [ ],
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/auth/signup" : {
+      "post" : {
+        "operationId" : "signup",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SignupRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuthResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [ ],
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/comments/{id}" : {
+      "delete" : {
+        "operationId" : "delete_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "comment-controller" ]
+      },
+      "put" : {
+        "operationId" : "update_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CommentRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CommentResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "comment-controller" ]
+      }
+    },
+    "/api/posts" : {
+      "post" : {
+        "operationId" : "create",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "body",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "maxLength" : 280,
+            "minLength" : 0
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "images" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "string",
+                      "format" : "binary"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PostResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "post-controller" ]
+      }
+    },
+    "/api/posts/{id}" : {
+      "delete" : {
+        "operationId" : "delete",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "post-controller" ]
+      },
+      "get" : {
+        "operationId" : "getById",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PostResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "post-controller" ]
+      },
+      "put" : {
+        "operationId" : "update",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PostRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PostResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "post-controller" ]
+      }
+    },
+    "/api/posts/{postId}/comments" : {
+      "get" : {
+        "operationId" : "list",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "postId",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }, {
+          "in" : "query",
+          "name" : "cursor",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }, {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CommentListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "comment-controller" ]
+      },
+      "post" : {
+        "operationId" : "create_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "postId",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CommentRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CommentResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "comment-controller" ]
+      }
+    },
+    "/api/posts/{postId}/like" : {
+      "delete" : {
+        "operationId" : "unlike",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "postId",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LikeResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "like-controller" ]
+      },
+      "post" : {
+        "operationId" : "like",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "postId",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LikeResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "like-controller" ]
+      }
+    },
+    "/api/timeline/all" : {
+      "get" : {
+        "operationId" : "all",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "cursor",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }, {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TimelineResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "timeline-controller" ]
+      }
+    },
+    "/api/timeline/following" : {
+      "get" : {
+        "operationId" : "following",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "cursor",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }, {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TimelineResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "timeline-controller" ]
+      }
+    },
+    "/api/users/me" : {
+      "put" : {
+        "operationId" : "updateProfile",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateProfileRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "user-controller" ]
+      }
+    },
+    "/api/users/me/avatar" : {
+      "delete" : {
+        "operationId" : "deleteAvatar",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "user-controller" ]
+      },
+      "put" : {
+        "operationId" : "updateAvatar",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "file" : {
+                    "type" : "string",
+                    "format" : "binary"
+                  }
+                },
+                "required" : [ "file" ]
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "user-controller" ]
+      }
+    },
+    "/api/users/search" : {
+      "get" : {
+        "operationId" : "search",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "maxLength" : 50,
+            "minLength" : 0
+          }
+        }, {
+          "in" : "query",
+          "name" : "cursor",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }, {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserSearchResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "user-controller" ]
+      }
+    },
+    "/api/users/{userId}/follow" : {
+      "delete" : {
+        "operationId" : "unfollow",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "userId",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FollowResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "follow-controller" ]
+      },
+      "post" : {
+        "operationId" : "follow",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "userId",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FollowResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "follow-controller" ]
+      }
+    },
+    "/api/users/{username}" : {
+      "get" : {
+        "operationId" : "getProfile",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "username",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProfileResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "user-controller" ]
+      }
+    },
+    "/api/users/{username}/posts" : {
+      "get" : {
+        "operationId" : "getUserPosts",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "username",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "cursor",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }, {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TimelineResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "user-controller" ]
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "AuthResponse" : {
+        "type" : "object",
+        "properties" : {
+          "accessToken" : {
+            "type" : "string"
+          },
+          "user" : {
+            "$ref" : "#/components/schemas/UserResponse"
+          }
+        }
+      },
+      "CommentListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "comments" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CommentResponse"
+            }
+          },
+          "nextCursor" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "CommentRequest" : {
+        "type" : "object",
+        "properties" : {
+          "body" : {
+            "type" : "string",
+            "maxLength" : 500,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "body" ]
+      },
+      "CommentResponse" : {
+        "type" : "object",
+        "properties" : {
+          "author" : {
+            "$ref" : "#/components/schemas/PostAuthor"
+          },
+          "body" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "postId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "FollowResponse" : {
+        "type" : "object",
+        "properties" : {
+          "followerCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "followingByMe" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "LikeResponse" : {
+        "type" : "object",
+        "properties" : {
+          "likeCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "likedByMe" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "LoginRequest" : {
+        "type" : "object",
+        "properties" : {
+          "identifier" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "password" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "identifier", "password" ]
+      },
+      "PostAuthor" : {
+        "type" : "object",
+        "properties" : {
+          "avatarUrl" : {
+            "type" : "string"
+          },
+          "displayName" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "username" : {
+            "type" : "string"
+          }
+        }
+      },
+      "PostRequest" : {
+        "type" : "object",
+        "properties" : {
+          "body" : {
+            "type" : "string",
+            "maxLength" : 280,
+            "minLength" : 0
+          }
+        }
+      },
+      "PostResponse" : {
+        "type" : "object",
+        "properties" : {
+          "author" : {
+            "$ref" : "#/components/schemas/PostAuthor"
+          },
+          "body" : {
+            "type" : "string"
+          },
+          "commentCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "imageUrls" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "likeCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "likedByMe" : {
+            "type" : "boolean"
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "ProfileResponse" : {
+        "type" : "object",
+        "properties" : {
+          "avatarUrl" : {
+            "type" : "string"
+          },
+          "bio" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "displayName" : {
+            "type" : "string"
+          },
+          "followerCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "followingByMe" : {
+            "type" : "boolean"
+          },
+          "followingCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "username" : {
+            "type" : "string"
+          }
+        }
+      },
+      "SignupRequest" : {
+        "type" : "object",
+        "properties" : {
+          "displayName" : {
+            "type" : "string",
+            "maxLength" : 100,
+            "minLength" : 0
+          },
+          "email" : {
+            "type" : "string",
+            "format" : "email",
+            "maxLength" : 255,
+            "minLength" : 0
+          },
+          "password" : {
+            "type" : "string",
+            "maxLength" : 100,
+            "minLength" : 8
+          },
+          "username" : {
+            "type" : "string",
+            "minLength" : 1,
+            "pattern" : "^[A-Za-z0-9_]{3,50}$"
+          }
+        },
+        "required" : [ "displayName", "email", "password", "username" ]
+      },
+      "TimelineResponse" : {
+        "type" : "object",
+        "properties" : {
+          "nextCursor" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "posts" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PostResponse"
+            }
+          }
+        }
+      },
+      "UpdateProfileRequest" : {
+        "type" : "object",
+        "properties" : {
+          "bio" : {
+            "type" : "string",
+            "maxLength" : 300,
+            "minLength" : 0
+          },
+          "displayName" : {
+            "type" : "string",
+            "maxLength" : 100,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "displayName" ]
+      },
+      "UserResponse" : {
+        "type" : "object",
+        "properties" : {
+          "avatarUrl" : {
+            "type" : "string"
+          },
+          "bio" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "displayName" : {
+            "type" : "string"
+          },
+          "email" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "username" : {
+            "type" : "string"
+          }
+        }
+      },
+      "UserSearchResponse" : {
+        "type" : "object",
+        "properties" : {
+          "nextCursor" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "users" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/UserSummary"
+            }
+          }
+        }
+      },
+      "UserSummary" : {
+        "type" : "object",
+        "properties" : {
+          "avatarUrl" : {
+            "type" : "string"
+          },
+          "bio" : {
+            "type" : "string"
+          },
+          "displayName" : {
+            "type" : "string"
+          },
+          "followingByMe" : {
+            "type" : "boolean"
+          },
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "username" : {
+            "type" : "string"
+          }
+        }
+      }
+    },
+    "securitySchemes" : {
+      "bearer-jwt" : {
+        "bearerFormat" : "JWT",
+        "scheme" : "bearer",
+        "type" : "http"
+      }
+    }
+  }
+}
