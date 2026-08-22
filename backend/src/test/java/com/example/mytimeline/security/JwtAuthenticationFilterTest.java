@@ -17,6 +17,7 @@ import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.MDC;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -55,11 +56,13 @@ class JwtAuthenticationFilterTest {
         response = new MockHttpServletResponse();
         chain = new MockFilterChain();
         SecurityContextHolder.clearContext();
+        MDC.clear();
     }
 
     @AfterEach
     void clearContext() {
         SecurityContextHolder.clearContext();
+        MDC.clear();
     }
 
     private Authentication currentAuthentication() {
@@ -81,6 +84,29 @@ class JwtAuthenticationFilterTest {
         // ロールは扱わない
         assertThat(authentication.getAuthorities()).isEmpty();
         assertThat(chain.getRequest()).isSameAs(request);
+    }
+
+    @Test
+    @DisplayName("認証に成功したら MDC の usr.id にユーザー ID（ID のみ・username は載せない）を入れる")
+    void validTokenPutsUserIdIntoMdc() throws Exception {
+        request.addHeader("Authorization", "Bearer valid.jwt.token");
+        when(jwtService.parseToken("valid.jwt.token")).thenReturn(Optional.of(new CurrentUser(7L, "taro")));
+
+        filter.doFilter(request, response, chain);
+
+        assertThat(MDC.get(JwtAuthenticationFilter.MDC_USER_ID)).isEqualTo("7");
+        assertThat(MDC.getCopyOfContextMap()).doesNotContainValue("taro");
+    }
+
+    @Test
+    @DisplayName("認証しなかった場合は MDC に usr.id を入れない")
+    void invalidTokenLeavesMdcEmpty() throws Exception {
+        request.addHeader("Authorization", "Bearer broken");
+        when(jwtService.parseToken("broken")).thenReturn(Optional.empty());
+
+        filter.doFilter(request, response, chain);
+
+        assertThat(MDC.get(JwtAuthenticationFilter.MDC_USER_ID)).isNull();
     }
 
     @Test
