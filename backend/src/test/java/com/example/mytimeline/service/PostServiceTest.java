@@ -43,6 +43,8 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 @ExtendWith(MockitoExtension.class)
 class PostServiceTest {
@@ -496,5 +498,27 @@ class PostServiceTest {
         assertThat(response.posts().get(0).imageUrls()).isEmpty();
         assertThat(response.posts().get(1).imageUrls()).containsExactly("https://s3.example/1");
         assertThat(response.posts().get(2).imageUrls()).isEmpty();
+    }
+
+    /**
+     * 設計技法: 境界値分析 + 条件網羅（{@code limit == null || limit <= 0}）。
+     * Mapper には「次があるか」判定のため常に +1 した件数が渡る。
+     */
+    @ParameterizedTest(name = "境界値: limit={0} → Mapper には {1}+1 件を要求する")
+    @CsvSource(nullValues = "null", value = {
+        "null, 20",
+        "-1, 20",
+        "0, 20",
+        "1, 1",
+        "20, 20",
+        "50, 50",
+        "51, 50",
+    })
+    void timelineLimitBoundaries(Integer limit, int effective) {
+        when(postMapper.findTimeline(isNull(), isNull(), eq(effective + 1), eq(OWNER_ID))).thenReturn(posts(1));
+
+        postService.getAllTimeline(OWNER_ID, null, limit);
+
+        verify(postMapper).findTimeline(null, null, effective + 1, OWNER_ID);
     }
 }
