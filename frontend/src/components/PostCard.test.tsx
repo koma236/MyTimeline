@@ -136,4 +136,29 @@ describe('PostCard', () => {
 
     expect(await screen.findByRole('alert')).toBeInTheDocument()
   })
+
+  it('キャンセルで onUpdate を呼ばずに表示へ戻る', async () => {
+    const onUpdate = vi.fn()
+    renderWithProviders(<PostCard post={post({ author: ME })} onUpdate={onUpdate} />)
+    await userEvent.click(menu())
+    await userEvent.click(screen.getByRole('button', { name: '編集' }))
+
+    await userEvent.click(screen.getByRole('button', { name: 'キャンセル' }))
+
+    expect(onUpdate).not.toHaveBeenCalled()
+    expect(screen.getByText('投稿の本文')).toBeInTheDocument()
+  })
+
+  it('分岐: 保存できない状態で submit イベントが来ても onUpdate を呼ばない', async () => {
+    const onUpdate = vi.fn()
+    renderWithProviders(<PostCard post={post({ author: ME })} onUpdate={onUpdate} />)
+    await userEvent.click(menu())
+    await userEvent.click(screen.getByRole('button', { name: '編集' }))
+    const textarea = screen.getByLabelText('投稿の本文を編集')
+    fireEvent.change(textarea, { target: { value: '' } })
+
+    fireEvent.submit(textarea)
+
+    expect(onUpdate).not.toHaveBeenCalled()
+  })
 })

@@ -156,4 +156,32 @@ describe('ProfileEditPage', () => {
 
     expect(deleteAvatar).not.toHaveBeenCalled()
   })
+
+  it('「画像を選択」は隠しファイル入力を開く', async () => {
+    const click = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {})
+    renderPage()
+
+    await userEvent.click(screen.getByRole('button', { name: '画像を選択' }))
+
+    expect(click).toHaveBeenCalledTimes(1)
+  })
+
+  it('分岐: 画像を選ばずに閉じた（files が空）場合は何もしない', () => {
+    renderPage()
+
+    fireEvent.change(screen.getByLabelText('プロフィール画像を選択'), { target: { files: [] } })
+
+    expect(uploadAvatar).not.toHaveBeenCalled()
+  })
+
+  it('アバターの削除に失敗したらエラーを出す', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    deleteAvatar.mockRejectedValue(new Error('boom'))
+    renderPage({ user: { ...USER, avatarUrl: 'https://s3/a.png' } })
+
+    await userEvent.click(screen.getByRole('button', { name: '画像を削除' }))
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '画像を削除' })).toBeEnabled()
+  })
 })

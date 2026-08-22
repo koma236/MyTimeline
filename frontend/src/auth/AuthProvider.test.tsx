@@ -241,4 +241,22 @@ describe('AuthProvider', () => {
       expect(status()).toBe('anonymous')
     })
   })
+
+  it('エラー推測: 復元の失敗がアンマウント後に返っても状態を更新しない', async () => {
+    let fail!: (reason: unknown) => void
+    refresh.mockReturnValue(
+      new Promise((_, reject) => {
+        fail = reject
+      }),
+    )
+    const { unmount } = renderProvider()
+    const warn = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    unmount()
+    await act(async () => fail(new Error('401')))
+
+    expect(warn).not.toHaveBeenCalled()
+    expect(mockedSetAccessToken).not.toHaveBeenCalled()
+    warn.mockRestore()
+  })
 })

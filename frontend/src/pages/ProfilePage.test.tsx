@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as postsApi from '../api/posts'
@@ -15,6 +15,8 @@ const fetchProfile = vi.mocked(usersApi.fetchProfile)
 const fetchUserPosts = vi.mocked(usersApi.fetchUserPosts)
 const followUser = vi.mocked(usersApi.followUser)
 const likePost = vi.mocked(postsApi.likePost)
+const updatePost = vi.mocked(postsApi.updatePost)
+const deletePost = vi.mocked(postsApi.deletePost)
 
 /**
  * 設計技法: 同値分割（自分 / 他人、投稿 0 件 / あり、見つからない）+ 状態遷移（フォローでフォロワー数が増える）。
@@ -113,5 +115,28 @@ describe('ProfilePage', () => {
     await userEvent.click(screen.getByRole('button', { name: '再読み込み' }))
 
     expect(await screen.findByText('復帰')).toBeInTheDocument()
+  })
+
+  it('自分のプロフィールでは投稿を編集・削除でき、一覧に反映される', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    fetchProfile.mockResolvedValue(profile({ id: USER.id, username: USER.username, displayName: USER.displayName }))
+    fetchUserPosts.mockResolvedValue({ posts: [post({ id: 1, body: 'before', author: ME })], nextCursor: null })
+    updatePost.mockResolvedValue(post({ id: 1, body: 'after', author: ME }))
+    deletePost.mockResolvedValue(undefined)
+    renderPage('alice')
+    await screen.findByText('before')
+
+    await userEvent.click(screen.getByRole('button', { name: '投稿メニュー' }))
+    await userEvent.click(screen.getByRole('button', { name: '編集' }))
+    fireEvent.change(screen.getByLabelText('投稿の本文を編集'), { target: { value: 'after' } })
+    await userEvent.click(screen.getByRole('button', { name: '保存' }))
+    expect(await screen.findByText('after')).toBeInTheDocument()
+    expect(updatePost).toHaveBeenCalledWith(1, { body: 'after' })
+
+    await userEvent.click(screen.getByRole('button', { name: '投稿メニュー' }))
+    await userEvent.click(screen.getByRole('button', { name: '削除' }))
+    await waitFor(() => expect(screen.queryByText('after')).not.toBeInTheDocument())
+    expect(deletePost).toHaveBeenCalledWith(1)
+    vi.restoreAllMocks()
   })
 })
