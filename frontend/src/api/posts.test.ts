@@ -37,7 +37,7 @@ describe('posts api', () => {
       const result = await createPost('こんにちは')
 
       expect(result).toEqual({ id: 1 })
-      const [url, form] = post.mock.calls[0]
+      const [url, form] = post.mock.calls[0] ?? []
       expect(url).toBe('/posts')
       expect(form).toBeInstanceOf(FormData)
       expect((form as FormData).get('body')).toBe('こんにちは')
@@ -51,7 +51,7 @@ describe('posts api', () => {
 
       await createPost('画像付き', [first, second])
 
-      const form = post.mock.calls[0][1] as FormData
+      const form = post.mock.calls[0]?.[1] as FormData
       const images = form.getAll('images') as File[]
       expect(images.map((file) => file.name)).toEqual(['a.png', 'b.png'])
     })

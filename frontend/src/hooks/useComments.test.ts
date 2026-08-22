@@ -152,7 +152,7 @@ describe('useComments', () => {
     await waitFor(() => expect(result.current.loading).toBe(false))
 
     act(() => result.current.replaceComment({ ...comment(2), body: 'edited' }))
-    expect(result.current.comments[1].body).toBe('edited')
+    expect(result.current.comments[1]?.body).toBe('edited')
 
     act(() => result.current.removeComment(1))
     expect(ids(result.current.comments)).toEqual([2, 3])

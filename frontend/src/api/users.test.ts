@@ -79,7 +79,7 @@ describe('users api', () => {
     expect(await uploadAvatar(file)).toEqual({ avatarUrl: 'https://s3/a.png' })
     expect(await deleteAvatar()).toEqual({ avatarUrl: null })
 
-    const [url, form] = put.mock.calls[0]
+    const [url, form] = put.mock.calls[0] ?? []
     expect(url).toBe('/users/me/avatar')
     expect((form as FormData).get('file')).toBe(file)
     expect(del).toHaveBeenCalledWith('/users/me/avatar')
