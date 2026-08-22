@@ -29,6 +29,8 @@
 | DBマイグレーション | Flyway | (Spring Boot 管理) |
 | 認証・認可 | Spring Security + JWT (jjwt) | Spring Boot 管理 / jjwt 0.12.6 |
 | バリデーション | Bean Validation (jakarta.validation) | (Spring Boot 管理) |
+| 監視エンドポイント | Spring Boot Actuator + Micrometer（Prometheus registry） | (Spring Boot 管理) |
+| 構造化ログ | Spring Boot 標準の structured logging（logstash 形式 JSON） | (Spring Boot 管理・追加ライブラリなし) |
 | 静的解析（規約） | Checkstyle | 10.26.1 |
 | 静的解析（バグ検出） | SpotBugs | 4.9.8 |
 | ビルドツール | Gradle | 8.x |

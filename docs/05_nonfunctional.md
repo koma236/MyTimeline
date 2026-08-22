@@ -13,3 +13,6 @@
 | 保守性 | ソースコードは Git で管理する。DB スキーマは Flyway でマイグレーション管理する |
 | 可用性 | 学習用のため厳密な SLA は設けない。将来的に ALB + 複数 EC2 で可用性向上を検討（[09_infrastructure.md](09_infrastructure.md)） |
 | バックアップ | 本番運用時は RDS 自動バックアップを想定（詳細は未決） |
+| ログ | 本番相当環境では 1 行 JSON の構造化ログを標準出力に書く。全行に `request_id` / ログイン中の `usr.id` を付け、レスポンスヘッダ `X-Request-Id` で利用者に返す。パスワード・トークン・メールアドレス・本文は記録しない（[10_logging_design.md](10_logging_design.md)） |
+| 監視 | `/actuator/health/{liveness,readiness}` と `/actuator/prometheus` を公開し、5xx 率 1 % / 5 %、p95 1 秒、JVM ヒープ 80 % / 90 % などの閾値で監視する。監視基盤の導入は未決（[11_monitoring_design.md](11_monitoring_design.md)） |
+| 障害対応 | SEV1〜3 の重大度と、検知 → 切り分け → 暫定対処 → 復旧 → ポストモーテムのフローを定める。アラートごとに Runbook を持つ（[12_incident_response.md](12_incident_response.md)） |
