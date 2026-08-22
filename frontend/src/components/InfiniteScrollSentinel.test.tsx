@@ -5,6 +5,10 @@ import { InfiniteScrollSentinel } from './InfiniteScrollSentinel'
 
 /**
  * 設計技法: 状態遷移（非交差 → 交差）+ エラー推測（アンマウント後の監視解除、最新の onVisible を使う）。
+ *
+ * カバレッジ上は `if (!target) return`（ref が未設定のときの防御）が未到達のまま。
+ * ref は同じコンポーネントの div に必ず付くため effect 実行時に null にはならず、
+ * テストから再現する手段がない。到達不能な防御コードとして許容する。
  */
 describe('InfiniteScrollSentinel', () => {
   let io: ReturnType<typeof mockIntersectionObserver>

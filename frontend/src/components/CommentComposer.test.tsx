@@ -90,4 +90,13 @@ describe('CommentComposer', () => {
     expect(textarea()).toHaveValue('keep me')
     expect(onCreated).not.toHaveBeenCalled()
   })
+
+  it('分岐: 送信できない状態で submit イベントが来ても onSubmit を呼ばない', () => {
+    const onSubmit = vi.fn()
+    renderWithProviders(<CommentComposer onSubmit={onSubmit} onCreated={vi.fn()} />)
+
+    fireEvent.submit(textarea())
+
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
 })

@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as usersApi from '../api/users'
@@ -18,10 +18,11 @@ const followUser = vi.mocked(usersApi.followUser)
  */
 describe('SearchPage', () => {
   const input = () => screen.getByRole('searchbox')
+  let io: ReturnType<typeof mockIntersectionObserver>
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIntersectionObserver()
+    io = mockIntersectionObserver()
     searchUsers.mockResolvedValue({ users: [], nextCursor: null })
   })
 
@@ -95,5 +96,18 @@ describe('SearchPage', () => {
     await userEvent.click(screen.getByRole('button', { name: '再読み込み' }))
 
     expect(await screen.findByText('復帰したユーザー')).toBeInTheDocument()
+  })
+
+  it('続きがあれば番兵を置き、交差したらカーソル付きで次のページを取る', async () => {
+    searchUsers
+      .mockResolvedValueOnce({ users: [userSummary({ id: 2, displayName: '1 ページ目' })], nextCursor: 2 })
+      .mockResolvedValueOnce({ users: [userSummary({ id: 3, displayName: '2 ページ目' })], nextCursor: null })
+    renderWithProviders(<SearchPage />)
+    await screen.findByText('1 ページ目')
+
+    act(() => io.intersect(true))
+
+    expect(await screen.findByText('2 ページ目')).toBeInTheDocument()
+    expect(searchUsers).toHaveBeenLastCalledWith('', 2)
   })
 })

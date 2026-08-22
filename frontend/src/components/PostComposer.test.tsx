@@ -99,4 +99,41 @@ describe('PostComposer', () => {
 
     expect(screen.getByRole('button', { name: '画像を添付' })).toBeDisabled()
   })
+
+  it('分岐: 送信失敗で画像の理由（fieldErrors.image）があればそれを、無ければ message を出す', async () => {
+    const { AxiosError, AxiosHeaders } = await import('axios')
+    const failWith = (data: unknown) => {
+      const config = { headers: new AxiosHeaders() }
+      return new AxiosError('x', AxiosError.ERR_BAD_REQUEST, config, {}, {
+        data,
+        status: 400,
+        statusText: '',
+        headers: new AxiosHeaders(),
+        config,
+      })
+    }
+    const onSubmit = vi
+      .fn()
+      .mockRejectedValueOnce(failWith({ message: '入力内容を確認してください', fieldErrors: { image: '画像が大きすぎます' } }))
+      .mockRejectedValueOnce(failWith({ message: '本文が長すぎます' }))
+    render(<PostComposer onSubmit={onSubmit} onCreated={vi.fn()} />)
+    fireEvent.change(screen.getByLabelText('投稿の本文'), { target: { value: '本文' } })
+
+    fireEvent.click(screen.getByRole('button', { name: '投稿' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('画像が大きすぎます')
+
+    fireEvent.click(screen.getByRole('button', { name: '投稿' }))
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('本文が長すぎます'))
+    // 失敗しても本文は残す
+    expect(screen.getByLabelText('投稿の本文')).toHaveValue('本文')
+  })
+
+  it('分岐: 送信できない状態で submit イベントが来ても onSubmit を呼ばない', () => {
+    const onSubmit = vi.fn()
+    render(<PostComposer onSubmit={onSubmit} onCreated={vi.fn()} />)
+
+    fireEvent.submit(screen.getByLabelText('投稿の本文'))
+
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
 })

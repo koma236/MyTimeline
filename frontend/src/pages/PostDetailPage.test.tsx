@@ -14,8 +14,10 @@ vi.mock('../api/comments')
 const fetchPost = vi.mocked(postsApi.fetchPost)
 const deletePost = vi.mocked(postsApi.deletePost)
 const likePost = vi.mocked(postsApi.likePost)
+const updatePost = vi.mocked(postsApi.updatePost)
 const fetchComments = vi.mocked(commentsApi.fetchComments)
 const createComment = vi.mocked(commentsApi.createComment)
+const updateComment = vi.mocked(commentsApi.updateComment)
 const deleteComment = vi.mocked(commentsApi.deleteComment)
 
 /**
@@ -136,5 +138,36 @@ describe('PostDetailPage', () => {
 
     expect(await screen.findByTestId('location')).toHaveTextContent('/')
     expect(deletePost).toHaveBeenCalledWith(10)
+  })
+
+  it('自分の投稿を編集すると updatePost の結果で本体を差し替える', async () => {
+    fetchPost.mockResolvedValue(post({ id: 10, body: 'before', author: ME }))
+    updatePost.mockResolvedValue(post({ id: 10, body: 'after', author: ME }))
+    renderPage()
+    await screen.findByText('before')
+
+    await userEvent.click(screen.getByRole('button', { name: '投稿メニュー' }))
+    await userEvent.click(screen.getByRole('button', { name: '編集' }))
+    fireEvent.change(screen.getByLabelText('投稿の本文を編集'), { target: { value: 'after' } })
+    await userEvent.click(screen.getByRole('button', { name: '保存' }))
+
+    expect(await screen.findByText('after')).toBeInTheDocument()
+    expect(updatePost).toHaveBeenCalledWith(10, { body: 'after' })
+  })
+
+  it('自分のコメントを編集すると updateComment の結果で一覧を差し替える', async () => {
+    fetchPost.mockResolvedValue(post({ id: 10, commentCount: 1 }))
+    fetchComments.mockResolvedValue({ comments: [comment({ id: 1, body: 'before', author: ME })], nextCursor: null })
+    updateComment.mockResolvedValue(comment({ id: 1, body: 'after', author: ME }))
+    renderPage()
+    await screen.findByText('before')
+
+    await userEvent.click(screen.getByRole('button', { name: 'コメントメニュー' }))
+    await userEvent.click(screen.getByRole('button', { name: '編集' }))
+    fireEvent.change(screen.getByLabelText('コメントの本文を編集'), { target: { value: 'after' } })
+    await userEvent.click(screen.getByRole('button', { name: '保存' }))
+
+    expect(await screen.findByText('after')).toBeInTheDocument()
+    expect(updateComment).toHaveBeenCalledWith(1, { body: 'after' })
   })
 })

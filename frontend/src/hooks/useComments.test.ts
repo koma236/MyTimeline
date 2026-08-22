@@ -37,6 +37,14 @@ function deferred<T>() {
   return { promise, resolve }
 }
 
+function deferredRejectable<T>() {
+  let reject!: (reason: unknown) => void
+  const promise = new Promise<T>((_, fail) => {
+    reject = fail
+  })
+  return { promise, reject }
+}
+
 const ids = (comments: CommentResponse[]) => comments.map((entry) => entry.id)
 
 function renderComments(postId = 10, strict = false) {
@@ -160,5 +168,20 @@ describe('useComments', () => {
     act(() => result.current.replaceComment(comment(99)))
     act(() => result.current.removeComment(99))
     expect(ids(result.current.comments)).toEqual([2, 3])
+  })
+
+  it('切替前の投稿の要求が後から失敗しても、エラーにしない', async () => {
+    const first = deferredRejectable<CommentListResponse>()
+    const second = deferred<CommentListResponse>()
+    fetchComments.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
+
+    const { result, rerender } = renderComments(10)
+    rerender({ id: 11 })
+    await act(async () => second.resolve(page([7])))
+
+    await act(async () => first.reject(new Error('stale')))
+
+    expect(result.current.error).toBeUndefined()
+    expect(ids(result.current.comments)).toEqual([7])
   })
 })

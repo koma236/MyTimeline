@@ -147,4 +147,30 @@ describe('CommentCard', () => {
 
     expect(screen.queryByRole('button', { name: '編集' })).not.toBeInTheDocument()
   })
+
+  it('削除に失敗したらエラーを出し、再度操作できる', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    renderWithProviders(
+      <CommentCard comment={mine()} onDelete={vi.fn().mockRejectedValue(new Error('boom'))} />,
+    )
+
+    await userEvent.click(menu())
+    await userEvent.click(screen.getByRole('button', { name: '削除' }))
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(menu()).toBeEnabled()
+  })
+
+  it('分岐: 保存できない状態で submit イベントが来ても onUpdate を呼ばない', async () => {
+    const onUpdate = vi.fn()
+    renderWithProviders(<CommentCard comment={mine()} onUpdate={onUpdate} />)
+    await userEvent.click(menu())
+    await userEvent.click(screen.getByRole('button', { name: '編集' }))
+    const textarea = screen.getByLabelText('コメントの本文を編集')
+    fireEvent.change(textarea, { target: { value: '' } })
+
+    fireEvent.submit(textarea)
+
+    expect(onUpdate).not.toHaveBeenCalled()
+  })
 })
