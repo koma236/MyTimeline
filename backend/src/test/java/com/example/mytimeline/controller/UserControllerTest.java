@@ -38,6 +38,8 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 /**
  * プロフィールエンドポイントのテスト。
@@ -308,5 +310,40 @@ class UserControllerTest {
 
     private String json(Object body) throws Exception {
         return objectMapper.writeValueAsString(body);
+    }
+
+    @Test
+    @DisplayName("境界値: 検索語がちょうど 50 文字は受け付ける")
+    void searchAcceptsQueryAtLimit() throws Exception {
+        String query = "a".repeat(50);
+        when(userService.searchUsers(query, CURRENT_USER_ID, null, null))
+            .thenReturn(new UserSearchResponse(List.of(), null));
+
+        mockMvc.perform(get("/api/users/search")
+                .param("q", query)
+                .header("Authorization", "Bearer " + VALID_TOKEN))
+            .andExpect(status().isOk());
+    }
+
+    @ParameterizedTest(name = "境界値: displayName {0} 文字 / bio {1} 文字のプロフィール更新は {2}")
+    @CsvSource({
+        "100, 300, accepted",
+        "101, 300, rejected",
+        "100, 301, rejected",
+        "1, 0, accepted",
+    })
+    void updateProfileLengthBoundaries(int displayNameLength, int bioLength, String expectation) throws Exception {
+        when(userService.updateProfile(eq(CURRENT_USER_ID), any())).thenReturn(userResponse());
+
+        var result = mockMvc.perform(put("/api/users/me")
+            .header("Authorization", "Bearer " + VALID_TOKEN)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(json(new UpdateProfileRequest("あ".repeat(displayNameLength), "い".repeat(bioLength)))));
+
+        if (expectation.equals("accepted")) {
+            result.andExpect(status().isOk());
+        } else {
+            result.andExpect(status().isBadRequest());
+        }
     }
 }

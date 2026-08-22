@@ -39,6 +39,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 @WebMvcTest(AuthController.class)
 @Import({SecurityConfig.class, AuthControllerTest.CookieTestConfig.class})
@@ -255,5 +257,70 @@ class AuthControllerTest {
             .andExpect(cookie().maxAge("refreshToken", 0));
 
         verify(authService).logout(null);
+    }
+
+    /**
+     * 設計技法: 境界値分析。各項目の上限・下限とその両隣を、同値分割ごとに 1 件ずつ確かめる。
+     * 「境界ちょうど」は受け付け（400 にならない）、「境界の外」は 400 で該当項目の fieldErrors が付く。
+     */
+    @ParameterizedTest(name = "境界値: {0} が {1} 文字は {2}")
+    @CsvSource({
+        "username, 2, rejected",
+        "username, 3, accepted",
+        "username, 50, accepted",
+        "username, 51, rejected",
+        "password, 7, rejected",
+        "password, 8, accepted",
+        "password, 100, accepted",
+        "password, 101, rejected",
+        "displayName, 100, accepted",
+        "displayName, 101, rejected",
+        "email, 255, accepted",
+        "email, 256, rejected",
+    })
+    void signupLengthBoundaries(String field, int length, String expectation) throws Exception {
+        when(authService.signup(any())).thenReturn(authResult("access-token"));
+        String username = field.equals("username") ? "a".repeat(length) : "taro";
+        String displayName = field.equals("displayName") ? "あ".repeat(length) : "山田太郎";
+        String password = field.equals("password") ? "p".repeat(length) : "password123";
+        String email = field.equals("email") ? emailOfLength(length) : "taro@example.com";
+
+        var result = mockMvc.perform(post("/api/auth/signup")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(json(new SignupRequest(username, displayName, email, password))));
+
+        if (expectation.equals("accepted")) {
+            result.andExpect(status().isCreated());
+        } else {
+            result.andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors." + field).exists());
+        }
+    }
+
+    /**
+     * 指定した総文字数のメールアドレス。@Email は RFC に従いローカル部 64 文字・ラベル 63 文字を上限とするため、
+     * 長さはドメイン側を短いラベルの連結で稼ぐ。
+     */
+    private static String emailOfLength(int length) {
+        StringBuilder domain = new StringBuilder();
+        int domainLength = length - "a@".length() - ".com".length();
+        while (domain.length() < domainLength) {
+            domain.append("b".repeat(50)).append('.');
+        }
+        domain.setLength(domainLength);
+        if (domain.charAt(domain.length() - 1) == '.') {
+            domain.setCharAt(domain.length() - 1, 'b');
+        }
+        return "a@" + domain + ".com";
+    }
+
+    @ParameterizedTest(name = "同値分割: username に使えない文字 [{0}] は 400")
+    @CsvSource({"ta-ro", "ta ro", "たろう", "ta.ro", "ta@ro"})
+    void signupRejectsInvalidUsernameCharacters(String username) throws Exception {
+        mockMvc.perform(post("/api/auth/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json(new SignupRequest(username, "山田太郎", "taro@example.com", "password123"))))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.fieldErrors.username").exists());
     }
 }

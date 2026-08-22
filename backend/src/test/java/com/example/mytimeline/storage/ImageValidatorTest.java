@@ -115,4 +115,35 @@ class ImageValidatorTest {
         ImageIO.write(image, format, out);
         return out.toByteArray();
     }
+
+    @Test
+    @DisplayName("境界値: ちょうど上限サイズ（2MB）のファイルは、サイズを理由には拒否されない")
+    void acceptsExactlyMaxBytes() throws IOException {
+        // 実物の PNG の後ろを 0 で埋めて上限ちょうどにする。ImageIO は IEND 以降の余分なバイトを無視する
+        byte[] png = pngBytes(10, 10);
+        byte[] exact = java.util.Arrays.copyOf(png, (int) ImageValidator.MAX_BYTES);
+        MockMultipartFile file = new MockMultipartFile("file", "a.png", "image/png", exact);
+
+        assertThat(validator.validate(file)).isEqualTo(ImageValidator.ImageFormat.PNG);
+    }
+
+    @Test
+    @DisplayName("境界値: 縦横がちょうど上限（4096px）の画像は受け付ける")
+    void acceptsExactlyMaxDimension() throws IOException {
+        MockMultipartFile file = new MockMultipartFile(
+            "file", "a.png", "image/png", pngBytes(ImageValidator.MAX_DIMENSION, 1));
+
+        assertThat(validator.validate(file)).isEqualTo(ImageValidator.ImageFormat.PNG);
+    }
+
+    @Test
+    @DisplayName("条件網羅: 高さだけが上限を超える画像も拒否する（width > MAX || height > MAX の右側）")
+    void rejectsTooTallDimension() throws IOException {
+        byte[] tall = pngBytes(1, ImageValidator.MAX_DIMENSION + 1);
+        MockMultipartFile file = new MockMultipartFile("file", "a.png", "image/png", tall);
+
+        assertThatThrownBy(() -> validator.validate(file))
+            .isInstanceOf(InvalidImageException.class)
+            .hasMessage(InvalidImageException.TOO_LARGE_DIMENSION);
+    }
 }
