@@ -28,12 +28,15 @@ public interface FollowMapper {
      * アプリ側の事前 SELECT ではなく UNIQUE 制約に任せる。例外を捕まえることもなく冪等になる
      * （F06 7. 既フォローで再 POST）。</p>
      *
+     * <p>ON CONFLICT の衝突対象を省いている理由は {@link LikeMapper#insertIgnoreDuplicate} と同じ。
+     * この表の UNIQUE 制約も uq_follows_follower_followee の 1 本だけ。</p>
+     *
      * @return 実際に挿入された行数。既にフォロー済みなら 0
      */
     @Insert("""
             INSERT INTO follows (follower_id, followee_id)
             VALUES (#{followerId}, #{followeeId})
-            ON CONFLICT (follower_id, followee_id) DO NOTHING
+            ON CONFLICT DO NOTHING
             """)
     int insertIgnoreDuplicate(@Param("followerId") Long followerId, @Param("followeeId") Long followeeId);
 

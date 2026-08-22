@@ -24,12 +24,17 @@ public interface LikeMapper {
      * どちらも「無い」と判定して 2 行入りうる。UNIQUE 制約に任せて DB 側で弾くことで、
      * 例外を捕まえることもなく冪等になる（F05 7. 既にいいね済みで再度 POST）。</p>
      *
+     * <p>ON CONFLICT に衝突対象の列 {@code (post_id, user_id)} を書いていないのは、
+     * テストで使う H2（PostgreSQL 互換モード）が対象指定を受け付けないため。
+     * この表の UNIQUE 制約は uq_likes_post_user の 1 本だけ（主キーは連番で衝突しない）なので、
+     * 対象を省いても PostgreSQL 上の意味は変わらない。</p>
+     *
      * @return 実際に挿入された行数。既にいいね済みなら 0
      */
     @Insert("""
             INSERT INTO likes (post_id, user_id)
             VALUES (#{postId}, #{userId})
-            ON CONFLICT (post_id, user_id) DO NOTHING
+            ON CONFLICT DO NOTHING
             """)
     int insertIgnoreDuplicate(@Param("postId") Long postId, @Param("userId") Long userId);
 
