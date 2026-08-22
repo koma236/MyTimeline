@@ -88,6 +88,8 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(DuplicateKeyException.class)
     public ResponseEntity<ErrorResponse> handleDuplicateKey(DuplicateKeyException e) {
+        // 事前チェックをすり抜けた競合。頻発するならチェック側の不具合を疑う
+        log.warn("UNIQUE 制約違反が発生しました（事前チェックをすり抜けた競合）");
         return ResponseEntity.status(HttpStatus.CONFLICT)
             .body(ErrorResponse.of("そのユーザー名またはメールアドレスは既に使用されています"));
     }
@@ -97,6 +99,8 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(InvalidCredentialsException.class)
     public ResponseEntity<ErrorResponse> handleInvalidCredentials(InvalidCredentialsException e) {
+        // 誰が失敗したか（identifier）は載せない。ログイン試行の急増は件数（401 の数）で検知する
+        log.warn("ログインに失敗しました");
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
             .body(ErrorResponse.of(e.getMessage()));
     }
@@ -106,6 +110,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(UserNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleUserNotFound(UserNotFoundException e) {
+        log.warn("トークンは有効だがユーザーが存在しません");
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
             .body(ErrorResponse.of(e.getMessage()));
     }
@@ -115,6 +120,8 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(InvalidRefreshTokenException.class)
     public ResponseEntity<ErrorResponse> handleInvalidRefreshToken(InvalidRefreshTokenException e) {
+        // 盗用検知で全失効した場合もここに来る。トークンそのものは絶対にログへ出さない
+        log.warn("リフレッシュトークンが無効です: reason={}", e.getMessage());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
             .body(ErrorResponse.of(e.getMessage()));
     }
@@ -133,6 +140,8 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(PostForbiddenException.class)
     public ResponseEntity<ErrorResponse> handlePostForbidden(PostForbiddenException e) {
+        // 操作者は MDC の usr.id に載っている。他人の投稿への操作は改ざん試行の可能性があるため WARN
+        log.warn("投稿への操作が拒否されました: reason={}", e.getMessage());
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
             .body(ErrorResponse.of(e.getMessage()));
     }
@@ -151,6 +160,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(CommentForbiddenException.class)
     public ResponseEntity<ErrorResponse> handleCommentForbidden(CommentForbiddenException e) {
+        log.warn("コメントへの操作が拒否されました: reason={}", e.getMessage());
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
             .body(ErrorResponse.of(e.getMessage()));
     }

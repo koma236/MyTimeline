@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+import org.slf4j.MDC;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -31,6 +32,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String BEARER_PREFIX = "Bearer ";
+
+    /** MDC のキー。Datadog の標準属性 {@code usr.id} に合わせる（docs/10_logging_design.md）。 */
+    public static final String MDC_USER_ID = "usr.id";
 
     private final JwtService jwtService;
 
@@ -66,5 +70,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             new UsernamePasswordAuthenticationToken(currentUser, null, List.of());
         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
         SecurityContextHolder.getContext().setAuthentication(authentication);
+        // 以降のログに「誰の操作か」を自動で付ける。SecurityContext はチェーンを抜けるときに
+        // 消されるため、外側の RequestLoggingFilter からは読めず、ここで MDC に書く必要がある。
+        // clear は RequestLoggingFilter がリクエスト終了時に一括で行う。
+        // 載せるのは ID のみ（username やメールアドレスは PII としてログに出さない）
+        MDC.put(MDC_USER_ID, String.valueOf(currentUser.id()));
     }
 }
