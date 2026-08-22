@@ -19,6 +19,11 @@ import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import static org.mockito.Mockito.mock;
+import java.net.URI;
+import java.time.Duration;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 
 @ExtendWith(MockitoExtension.class)
 class S3StorageServiceTest {
@@ -105,5 +110,42 @@ class S3StorageServiceTest {
         storageService().deleteQuietly("avatars/1/old.png");
 
         verify(s3Client).deleteObject(any(DeleteObjectRequest.class));
+    }
+
+    @Test
+    @DisplayName("投稿画像のキーは posts/ 配下でユーザーごとに分かれ、形式の拡張子が付く")
+    void newPostImageKeyIsScopedByUser() {
+        String key = storageService().newPostImageKey(7L, ImageValidator.ImageFormat.PNG);
+
+        assertThat(key).startsWith("posts/7/").endsWith(".png");
+        assertThat(key).isNotEqualTo(storageService().newPostImageKey(7L, ImageValidator.ImageFormat.PNG));
+    }
+
+    @Test
+    @DisplayName("削除はバケットとキーを指定して 1 回だけ呼ぶ（成功経路）")
+    void deleteQuietlySpecifiesBucketAndKey() {
+        storageService().deleteQuietly("avatars/1/old.png");
+
+        ArgumentCaptor<DeleteObjectRequest> captor = ArgumentCaptor.forClass(DeleteObjectRequest.class);
+        verify(s3Client).deleteObject(captor.capture());
+        assertThat(captor.getValue().bucket()).isEqualTo(BUCKET);
+        assertThat(captor.getValue().key()).isEqualTo("avatars/1/old.png");
+    }
+
+    @Test
+    @DisplayName("署名付き URL は設定の有効期限とバケット・キーで署名し、URL 文字列を返す")
+    void presignedGetUrlUsesConfiguredExpiration() throws Exception {
+        PresignedGetObjectRequest presigned = mock(PresignedGetObjectRequest.class);
+        when(presigned.url()).thenReturn(URI.create("https://s3.test/bucket/avatars/1/a.png?sig").toURL());
+        when(s3Presigner.presignGetObject(any(GetObjectPresignRequest.class))).thenReturn(presigned);
+
+        String url = storageService().presignedGetUrl("avatars/1/a.png");
+
+        assertThat(url).isEqualTo("https://s3.test/bucket/avatars/1/a.png?sig");
+        ArgumentCaptor<GetObjectPresignRequest> captor = ArgumentCaptor.forClass(GetObjectPresignRequest.class);
+        verify(s3Presigner).presignGetObject(captor.capture());
+        assertThat(captor.getValue().signatureDuration()).isEqualTo(Duration.ofMinutes(60));
+        assertThat(captor.getValue().getObjectRequest().bucket()).isEqualTo(BUCKET);
+        assertThat(captor.getValue().getObjectRequest().key()).isEqualTo("avatars/1/a.png");
     }
 }

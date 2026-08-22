@@ -120,4 +120,14 @@ class PostImageMapperTest extends MapperTestBase {
 
         assertThat(found).extracting(PostImage::getPostId).containsExactly(post.getId());
     }
+
+    @Test
+    @DisplayName("読み戻した画像には採番された id が付く（insertAll は id を書き戻さないので取得側で確認する）")
+    void foundImagesCarryGeneratedIds() {
+        postImageMapper.insertAll(List.of(image(post.getId(), 0), image(post.getId(), 1)));
+
+        List<PostImage> found = postImageMapper.findByPostIds(List.of(post.getId()));
+
+        assertThat(found).extracting(PostImage::getId).doesNotContainNull().doesNotHaveDuplicates();
+    }
 }
