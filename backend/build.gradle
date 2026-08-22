@@ -1,6 +1,7 @@
 plugins {
 	id 'java'
 	id 'checkstyle'
+	id 'jacoco'
 	id 'com.github.spotbugs' version '6.4.7'
 	id 'org.springframework.boot' version '4.0.6'
 	id 'io.spring.dependency-management' version '1.1.7'
@@ -87,9 +88,29 @@ dependencies {
 	// Spring Boot 4 では @WebMvcTest などの MVC テストスライスが別モジュールに分離されている
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
 	testImplementation 'org.springframework.security:spring-security-test'
+	// Mapper 層のテスト（@MybatisTest）。MyBatis と DataSource だけを起動する軽量スライス
+	testImplementation "org.mybatis.spring.boot:mybatis-spring-boot-starter-test:${mybatisStarterVersion}"
+	// テスト専用の DB。開発用 PostgreSQL に触れず、PostgreSQL 互換モードでマイグレーションを流す
+	// （src/test/resources/application-test.properties）
+	testRuntimeOnly 'com.h2database:h2'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 tasks.named('test') {
 	useJUnitPlatform()
+	// テスト後に必ずカバレッジレポートを出す。閾値で落とさず、未到達の分岐を探す材料にする
+	finalizedBy 'jacocoTestReport'
+}
+
+jacoco {
+	toolVersion = '0.8.14'
+}
+
+tasks.named('jacocoTestReport') {
+	dependsOn 'test'
+	reports {
+		// ローカルでそのまま開ける HTML（build/reports/jacoco/test/html/index.html）
+		html.required = true
+		xml.required = false
+	}
 }
