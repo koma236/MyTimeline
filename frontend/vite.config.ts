@@ -27,5 +27,13 @@ export default defineConfig({
     // jest-dom のマッチャ登録。各テストファイルで import しなくて済むよう共通化する
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
+    // 分岐カバレッジを見るため（npm run test:coverage）。閾値でビルドを落とさず、
+    // 未到達の分岐を探してテストを足すための材料にする
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: ['src/**/*.test.{ts,tsx}', 'src/test/**', 'src/types/**', 'src/main.tsx'],
+      reporter: ['text', 'html'],
+    },
   },
 })
