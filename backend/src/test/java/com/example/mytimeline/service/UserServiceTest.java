@@ -35,6 +35,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
@@ -338,5 +340,23 @@ class UserServiceTest {
         user.setBio(bio);
         user.setAvatarKey(avatarKey);
         return user;
+    }
+
+    @Test
+    @DisplayName("エラー推測: アップロードファイルが読めなければ AvatarUploadException になり、DB は更新しない")
+    void updateAvatarFailsWhenFileCannotBeRead() throws IOException {
+        MultipartFile unreadable = mock(MultipartFile.class);
+        when(imageValidator.validate(unreadable)).thenReturn(ImageValidator.ImageFormat.PNG);
+        when(userMapper.findById(USER_ID)).thenReturn(Optional.of(user(null, null)));
+        when(storageService.newAvatarKey(USER_ID, ImageValidator.ImageFormat.PNG)).thenReturn("avatars/1/new.png");
+        when(unreadable.getBytes()).thenThrow(new IOException("stream closed"));
+
+        assertThatThrownBy(() -> userService.updateAvatar(USER_ID, unreadable))
+            .isInstanceOf(UserService.AvatarUploadException.class)
+            .hasMessage("アバター画像のアップロードに失敗しました")
+            .hasCauseInstanceOf(IOException.class);
+
+        verify(storageService, never()).put(anyString(), any(byte[].class), anyString());
+        verify(userMapper, never()).updateAvatarKey(anyLong(), anyString());
     }
 }

@@ -11,6 +11,12 @@ import javax.imageio.ImageIO;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 画像検証のテスト。
@@ -145,5 +151,45 @@ class ImageValidatorTest {
         assertThatThrownBy(() -> validator.validate(file))
             .isInstanceOf(InvalidImageException.class)
             .hasMessage(InvalidImageException.TOO_LARGE_DIMENSION);
+    }
+
+    @Test
+    @DisplayName("同値分割: 画像ではあるが JPEG / PNG 以外（GIF）は形式として拒否する")
+    void rejectsUnsupportedImageFormat() throws IOException {
+        BufferedImage image = new BufferedImage(4, 4, BufferedImage.TYPE_INT_RGB);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ImageIO.write(image, "gif", out);
+        MockMultipartFile file = new MockMultipartFile("file", "a.gif", "image/gif", out.toByteArray());
+
+        assertThatThrownBy(() -> validator.validate(file))
+            .isInstanceOf(InvalidImageException.class)
+            .hasMessage(InvalidImageException.UNSUPPORTED_FORMAT);
+    }
+
+    @Test
+    @DisplayName("エラー推測: ファイルの読み取りで IOException が起きても形式エラーとして扱い、詳細は漏らさない")
+    void treatsIoExceptionAsUnsupportedFormat() throws IOException {
+        MultipartFile broken = mock(MultipartFile.class);
+        when(broken.isEmpty()).thenReturn(false);
+        when(broken.getSize()).thenReturn(10L);
+        when(broken.getInputStream()).thenThrow(new IOException("disk error"));
+
+        assertThatThrownBy(() -> validator.validate(broken))
+            .isInstanceOf(InvalidImageException.class)
+            .hasMessage(InvalidImageException.UNSUPPORTED_FORMAT);
+    }
+
+    @ParameterizedTest(name = "同値分割: ImageIO の形式名 {0} → {1}")
+    @CsvSource({"jpeg, JPEG", "JPEG, JPEG", "jpg, JPEG", "png, PNG", "PNG, PNG"})
+    void formatNameIsNormalized(String formatName, ImageValidator.ImageFormat expected) {
+        assertThat(ImageValidator.ImageFormat.from(formatName)).isEqualTo(expected);
+    }
+
+    @ParameterizedTest(name = "同値分割: 非対応の形式名 {0} は拒否する")
+    @ValueSource(strings = {"gif", "bmp", "webp", "tiff", ""})
+    void unknownFormatNameIsRejected(String formatName) {
+        assertThatThrownBy(() -> ImageValidator.ImageFormat.from(formatName))
+            .isInstanceOf(InvalidImageException.class)
+            .hasMessage(InvalidImageException.UNSUPPORTED_FORMAT);
     }
 }

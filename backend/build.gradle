@@ -112,5 +112,7 @@ tasks.named('jacocoTestReport') {
 		// ローカルでそのまま開ける HTML（build/reports/jacoco/test/html/index.html）
 		html.required = true
 		xml.required = false
+		// 未到達分岐を機械的に拾うための CSV（build/reports/jacoco/test/jacocoTestReport.csv）
+		csv.required = true
 	}
 }
