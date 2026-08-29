@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
@@ -71,7 +71,7 @@ describe('App', () => {
 
     expect(await screen.findByRole('button', { name: 'ログアウト' })).toBeInTheDocument()
     expect(await screen.findByRole('tab', { name: 'すべて' })).toBeInTheDocument()
-    expect(fetchTimeline).toHaveBeenCalledWith('all', null)
+    await waitFor(() => expect(fetchTimeline).toHaveBeenCalledWith('all', null))
   })
 
   it('ログイン中は /search で検索画面が出る', async () => {
