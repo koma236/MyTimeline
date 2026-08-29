@@ -27,8 +27,13 @@ React + Spring Boot プロジェクトの全体的なコード品質チェック
    - TypeScript の型安全性（unsafe キャスト `as Type`、non-null assertion `!` の乱用など）
    - Oxlint の `categories` が `correctness` / `suspicious` / `perf` を維持しているか。
      ルールを無効化する場合は `.oxlintrc.json` に理由をコメントで残しているか
-   - 壊れても画面上は気付きにくいロジック（`useTimeline` の追い越しレスポンス破棄、
-     `client.ts` の 401 リフレッシュ集約）にテストが残っているか
+   - 壊れても画面上は気付きにくいロジック（`useCursorPager` の追い越しレスポンス破棄・二重取得抑止、
+     `client.ts` の 401 リフレッシュ集約、`AuthProvider` の状態遷移）にテストが残っているか
+6. `npm run test:coverage` で分岐カバレッジを確認する（`coverage/index.html`）。閾値で落とす運用ではなく、
+   新しく足したコードに未到達の分岐が無いかを見る。到達不能な防御コードは理由をテストのコメントに残す
+7. テストは設計技法（同値分割 / 境界値 / デシジョンテーブル / 状態遷移 / 分岐網羅）からケースを導き、
+   `it()` 名やファイル冒頭コメントに技法を明記する。pages のテストは API モジュールを `vi.mock` し、
+   `src/test/renderWithProviders.tsx` と `src/test/fixtures.ts` を使ってユーザー操作ベースで書く
 
 ### バックエンド (Spring Boot / Java)
 
@@ -37,7 +42,14 @@ React + Spring Boot プロジェクトの全体的なコード品質チェック
 1. `./gradlew build` を実行してコンパイルエラー・テスト失敗がないことを確認する
 2. `./gradlew checkstyleMain checkstyleTest` を実行して Checkstyle 違反を確認・修正する
 3. SpotBugs の検出結果を確認する（`build` に含まれる）
-4. 以下の観点でコードをレビューし、問題があれば修正する:
+4. テストは 3 層で構成されている。変更した層に対応するテストがあるか確認する:
+   - Mapper（`@MybatisTest` + H2、`mapper/*MapperTest`）: SQL・制約（UNIQUE / CHECK / CASCADE）・カーソルの向き
+   - Service / Controller（モック）: 業務ルールとバリデーションの境界値
+   - 結合（`@SpringBootTest` + H2、`integration/*IntegrationTest`）: Controller → DB を通した状態遷移。
+     S3 だけ `@MockitoBean`。docker-compose を止めた状態でも通ること（開発 DB に依存しない）
+5. JaCoCo の分岐カバレッジを確認する（`build/reports/jacoco/test/html/index.html`、CSV は
+   `jacocoTestReport.csv`）。閾値では落とさず、新しく足したコードの未到達分岐を探す材料にする
+6. 以下の観点でコードをレビューし、問題があれば修正する:
    - コントローラーで手動 try-catch を使わず `@RestControllerAdvice` に集中させているか
    - `@Valid` アノテーションがリクエストボディに付与されているか
    - サービス層で DTO と重複したバリデーションロジックがないか
@@ -67,6 +79,11 @@ React + Spring Boot プロジェクトの全体的なコード品質チェック
 - `README.md` / `frontend/README.md`: 前提バージョン、API エンドポイント一覧、ポート番号、npm スクリプト一覧
 - ER 図: テーブル名・カラム定義が `backend/src/main/resources/db/migration/` の SQL と一致しているか
 - `requirements.md` / `docs/`: 技術スタックのバージョンが実装と一致しているか
+
+### CI との対応
+
+`.github/workflows/quality-check.yml` が PR ごとに上記のフロントエンド 1〜4 とバックエンド 1〜3 を実行し、
+テスト結果とカバレッジをアーティファクトに保存する。手元でこのスキルを通していれば CI も通る。
 
 ## 完了条件
 
