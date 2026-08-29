@@ -163,7 +163,9 @@ docker compose up -d
 ヘルスチェック:
 
 ```bash
-curl -s http://localhost:8080/actuator/health
+curl -s http://localhost:8080/actuator/health            # 総合
+curl -s http://localhost:8080/actuator/health/liveness   # プロセス生存（compose の healthcheck が使う）
+curl -s http://localhost:8080/actuator/health/readiness  # 受付可能か（DB 断で DOWN。ALB のヘルスチェック用）
 ```
 
 ---
@@ -278,6 +280,37 @@ Browser → CloudFront ┬─ /*      → S3 (静的: React)
 
 ---
 
+## 運用（ログ・監視・障害対応）
+
+バックエンドは監視基盤を **まだ持たない** が、導入した日に環境変数だけで繋がるよう、構造化ログと監視エンドポイントを先に用意している。
+
+```bash
+# 既定はテキストログ。行に [rid=<request_id> uid=<usr.id>] が付く
+cd backend && ./gradlew bootRun
+
+# LOG_FORMAT=logstash で 1 行 JSON（本番・ログ基盤向け）。jq でそのまま読める
+LOG_FORMAT=logstash APP_ENV=staging ./gradlew bootRun 2>&1 | grep '^{' | jq -c '{level, message, request_id, "usr.id"}'
+
+# すべてのレスポンスに X-Request-Id が付く。利用者の報告とサーバーログを突き合わせる鍵
+curl -i http://localhost:8080/api/timeline/all | grep -i x-request-id
+
+# メトリクス（要ログイン）。Prometheus 形式
+curl -s -H "Authorization: Bearer <accessToken>" http://localhost:8080/actuator/prometheus | head
+```
+
+| 環境変数 | 既定 | 内容 |
+|----------|------|------|
+| `LOG_FORMAT` | （空＝テキスト） | `logstash` で JSON |
+| `APP_ENV` | `local` | JSON ログの `env` 属性（`staging` / `production`） |
+| `APP_VERSION` | `unknown` | JSON ログの `version` 属性。デプロイ時にビルド版を入れる |
+| `LOG_LEVEL_APP` | `INFO` | `com.example.mytimeline` のログレベル。調査時に `DEBUG` |
+
+- ログの形式・フィールド・書いてはいけないもの: [docs/10_logging_design.md](docs/10_logging_design.md)
+- 監視項目と閾値（5xx 率・レイテンシ・JVM・DB プール）: [docs/11_monitoring_design.md](docs/11_monitoring_design.md)
+- 障害対応フロー・Runbook・ポストモーテム: [docs/12_incident_response.md](docs/12_incident_response.md)
+
+---
+
 ## ドキュメント
 
 ### 要件定義
@@ -293,6 +326,9 @@ Browser → CloudFront ┬─ /*      → S3 (静的: React)
 | [docs/07_er_diagram.md](docs/07_er_diagram.md) | ER図・テーブル定義 |
 | [docs/08_constraints.md](docs/08_constraints.md) | 制約・前提条件・未決事項 |
 | [docs/09_infrastructure.md](docs/09_infrastructure.md) | インフラ構成（暫定・前提） |
+| [docs/10_logging_design.md](docs/10_logging_design.md) | ログ設計（構造化ログ・リクエスト ID・PII 規約） |
+| [docs/11_monitoring_design.md](docs/11_monitoring_design.md) | 監視運用設計（監視項目・閾値・通知） |
+| [docs/12_incident_response.md](docs/12_incident_response.md) | 障害対応運用フロー（重大度・Runbook・ポストモーテム） |
 
 ### 機能定義書（機能単位の詳細）
 

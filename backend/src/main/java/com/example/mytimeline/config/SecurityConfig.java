@@ -61,7 +61,10 @@ public class SecurityConfig {
                 // 取り直すことも抜けることもできない」状態になる
                 .requestMatchers("/api/auth/signup", "/api/auth/login").permitAll()
                 .requestMatchers("/api/auth/refresh", "/api/auth/logout").permitAll()
-                .requestMatchers("/actuator/health", "/error").permitAll()
+                // health 配下は liveness / readiness（ALB・コンテナのヘルスチェック用）も含めて公開。
+                // metrics / prometheus / info は内部情報を含むため認証必須のまま
+                // （監視エージェントからの取得方法は docs/11_monitoring_design.md 参照）
+                .requestMatchers("/actuator/health", "/actuator/health/**", "/error").permitAll()
                 // API 仕様書（springdoc / Swagger UI）。本番では公開しないが、認可ではなく
                 // springdoc 側の無効化（SPRINGDOC_ENABLED=false → 404）で止める
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()

@@ -91,6 +91,10 @@ services:
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
       S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
       S3_PATH_STYLE_ACCESS: ${S3_PATH_STYLE_ACCESS:-true}
+      # ログ形式と環境名。compose でも本番相当の JSON を試せるよう .env から渡す
+      LOG_FORMAT: ${LOG_FORMAT:-}
+      APP_ENV: ${APP_ENV:-local}
+      LOG_LEVEL_APP: ${LOG_LEVEL_APP:-INFO}
       # db と同じ理由で JST に揃える
       TZ: Asia/Tokyo
     depends_on:
@@ -98,6 +102,14 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+    # liveness はプロセス生存のみを見る。DB 断で readiness が落ちてもコンテナを再起動させない
+    # （再起動しても DB は直らず、ログが途切れて調査しにくくなるだけ）
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8080/actuator/health/liveness || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
 
 volumes:
   postgres_data:

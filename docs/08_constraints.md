@@ -28,4 +28,7 @@
 | TBD-11 | 参照されない画像の回収 | ストレージ操作はトランザクションでロールバックできないため、プロフィール画像の差し替えや画像付き投稿の作成が途中で失敗すると孤児オブジェクトが残りうる。定期的な掃除の要否は今後判断する（[F07_profile.md](features/F07_profile.md) 6. / [F03_post.md](features/F03_post.md) 7.） | 未決 |
 | TBD-12 | ユーザー検索のスケーラビリティ | 部分一致を `ILIKE '%...%'` で実装しているため、前方一致と違いインデックスが効かず `users` を全件走査する。ユーザー数が増えたら pg_trgm の GIN インデックスか全文検索への移行が必要（[F06_follow.md](features/F06_follow.md) 5.） | 未決（学習段階では現状で許容） |
 | TBD-13 | フォロー中タイムラインの絞り込み方 | フォロー先の id を `IN` で渡しているため、フォロー数が数千規模になるとクエリが肥大する。`follows` を JOIN する形への移行が必要になるかは今後判断する（[F06_follow.md](features/F06_follow.md) 5.） | 未決 |
+| TBD-15 | ログ基盤・保持期間 | アプリ側は構造化ログ（JSON）を出す準備が済んでいる（[10_logging_design.md](10_logging_design.md)）が、収集・保管する基盤（Datadog / CloudWatch Logs 等）と保持期間、ALB / CloudFront から `X-Request-Id` を付与するかは未決。導入は環境変数 `LOG_FORMAT=logstash` の設定とエージェント配置のみで済む想定 | 未決 |
+| TBD-16 | メトリクスエンドポイントの公開方式 | `/actuator/prometheus` は現状 JWT 認証必須で、監視エージェントからは取得できない。管理ポート分離（`management.server.port`）＋セキュリティグループ制限か、dd-java-agent（JMX / APM）経由かを監視基盤導入時に決める（[11_monitoring_design.md](11_monitoring_design.md) 13.2） | 未決 |
+| TBD-17 | ログイン試行のレート制限 | アプリ側にレート制限が無く、ブルートフォースは監視（M-14 / M-15）で検知してインフラ側（WAF / SG）で遮断する前提。アプリ側での制限（IP / アカウント単位のロック）を入れるかは未決（[12_incident_response.md](12_incident_response.md) RB-07） | 未決 |
 | TBD-14 | 予約された username | `/api/users/search` が `/api/users/{username}` より優先されるため、`search` という username のプロフィールは開けない。登録時に予約語として弾くかは今後判断する（[F06_follow.md](features/F06_follow.md) 4.） | 未決 |

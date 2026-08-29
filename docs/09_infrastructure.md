@@ -51,7 +51,7 @@
 |----------------|----------|------|------|
 | CDN / 配信 | CloudFront | 静的配信・`/api/*` を ALB へ・画像配信・HTTPS 終端 | `redirect-to-https` |
 | 静的ホスティング | S3 | React ビルド成果物を配信 | 直接公開せず CloudFront (OAC) 経由 |
-| ロードバランサー | ALB | `/api/*` を EC2 へルーティング。将来の複数台構成に対応 | ヘルスチェックを設定 |
+| ロードバランサー | ALB | `/api/*` を EC2 へルーティング。将来の複数台構成に対応 | ヘルスチェックは `/actuator/health/readiness`（DB 断で振り分けから外れる。[11_monitoring_design.md](11_monitoring_design.md) 13.2） |
 | アプリ実行 | EC2 | Spring Boot アプリを実行 | public subnet、将来 Auto Scaling を検討 |
 | データベース | RDS for PostgreSQL | 永続データ（users/posts/... ） | private subnet、外部非公開 |
 | 画像ストレージ | S3（画像バケット） | 投稿画像・プロフィール画像の本体を保存（DB はキーのみ） | [terraform/](../terraform/README.md) で定義済み。現状は署名付き URL で配信。将来 CloudFront (OAC) 経由へ |
@@ -94,3 +94,4 @@
 - RDS の Multi-AZ 化・自動バックアップ運用
 - Terraform による IaC 化の拡大（S3 画像バケット + IAM は [terraform/](../terraform/README.md) で定義済み。EC2 / RDS / ALB / CloudFront が未着手）、CI/CD（GitHub Actions 等）での自動デプロイ
 - 独自ドメイン（Route 53 + ACM）の導入
+- 監視・ログ基盤（Datadog / CloudWatch）の導入。アプリ側の準備は済んでおり（[10_logging_design.md](10_logging_design.md) / [11_monitoring_design.md](11_monitoring_design.md)）、エージェントの配置と `/actuator/prometheus` の公開方式（[08_constraints.md](08_constraints.md) TBD-16）を決める
