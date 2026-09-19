@@ -1,6 +1,6 @@
 ---
 name: quality-check
-description: このリポジトリ全体のコード品質チェックと修正を行う。フロントエンド（Oxlint / tsc / Vitest）、バックエンド（Gradle build / Checkstyle / SpotBugs）、インフラ（Terraform）、およびドキュメントと実装の整合性を確認する。
+description: このリポジトリ全体のコード品質チェックと修正を行う。フロントエンド（Oxlint / tsc / Vitest）、バックエンド（Gradle build / Checkstyle / SpotBugs）、インフラ（Terraform）、およびドキュメントと実装の整合性を確認する。テストの実行は必須（省略不可）。
 allowed-tools: Bash, Read, Edit, Write, Glob, Grep
 ---
 
@@ -11,6 +11,20 @@ React + Spring Boot プロジェクトの全体的なコード品質チェック
 > もとはユーザーのグローバル設定（`~/.claude/commands/quality-check.md`）にあったものを、
 > チーム内で共有しレビュー対象にするためリポジトリへ持ち込んだ。
 > コマンド名はこのリポジトリの実際の構成（Oxlint / Vitest / SpotBugs）に合わせてある。
+
+## 鉄則：テストは必ず実行する
+
+品質チェックにおいてテストの実行は**省略不可**である。
+
+1. 変更の大小・種別（ドキュメントのみの変更を含む）に関わらず、以下を**必ず両方**実行する:
+   - `cd frontend && npm run check`（Oxlint → tsc → Vitest 全件）
+   - `cd backend && ./gradlew build`（全テスト + Checkstyle + SpotBugs + JaCoCo）
+2. 1 件でも失敗があれば品質チェックは**未完了**。修正して再実行するか、修正できない場合は
+   理由を添えて「失敗」として報告する。「概ね OK」「一部スキップ」で完了にしてはならない
+3. 実行結果は必ずテスト件数（passed / failed / 総数）を添えて報告する
+4. **品質チェック中にコードを修正した場合、その修正を検証するテストの追加・更新も必須。**
+   テストの無い修正は完了と見なさない。ケースは後述のとおり設計技法
+   （同値分割 / 境界値 / デシジョンテーブル / 状態遷移 / 分岐網羅）から導くこと
 
 ## 実行内容
 
@@ -87,8 +101,10 @@ React + Spring Boot プロジェクトの全体的なコード品質チェック
 
 ## 完了条件
 
+- フロント・バックの全テストを**実際に実行**したこと（結果をテスト件数付きで報告している）
 - `cd frontend && npm run check` が成功（Oxlint 0 件 / 型エラー 0 件 / Vitest 全件パス）
-- `cd backend && ./gradlew build` 成功（Checkstyle・SpotBugs 警告 0 件）
+- `cd backend && ./gradlew build` 成功（全テストパス / Checkstyle・SpotBugs 警告 0 件）
+- 品質チェック中に入れた修正には、それを検証するテストが付いていること
 - `.tf` がある場合: `terraform fmt -check -recursive` 差分 0 件、`terraform validate` 成功、
   `terraform plan` で意図しない差分が出ないこと（あれば説明可能であること）
 - ドキュメントと実装の乖離が解消されている
