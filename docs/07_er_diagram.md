@@ -87,7 +87,7 @@
 | id | BIGINT | ○ | 主キー（自動採番） |
 | user_id | BIGINT | ○ | 外部キー（users.id）。ユーザー削除時は CASCADE |
 | token_hash | CHAR(64) | ○ | トークン生値の SHA-256（16進64文字）。**UNIQUE**。生値は保存しない |
-| expires_at | DATETIME | ○ | 有効期限（既定 14 日） |
+| expires_at | DATETIME | ○ | 有効期限（既定 7 日） |
 | revoked_at | DATETIME | - | 失効日時。NULL なら有効。ローテーション・ログアウト・盗用検知で設定 |
 | created_at | DATETIME | ○ | 作成日時 |
 
