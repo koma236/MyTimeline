@@ -57,7 +57,7 @@ PERF_USERS=5000 PERF_POSTS=500000 bash perf/run.sh run smoke   # run にも同�
 | ファイル | 内容 |
 |---|---|
 | `<日時>-<種別>-report.html` | k6 のダッシュボード。ブラウザで開く |
-| `<日時>-<種別>-summary.json` | 集計値。前回との比較や転記に使う |
+| `<日時>-<種別>-summary.json` | 集計値。前回との比較や転記に使う。`thresholds` の値は「違反したか」を表すので、`false` が合格 |
 | `<日時>-<種別>-docker-stats.csv` | backend / db コンテナの CPU・メモリ（5 秒間隔） |
 | `<日時>-<種別>-prometheus-{before,after}.txt` | 実行前後の `/actuator/prometheus`。`hikaricp_connections_pending`、`jvm_memory_used_bytes`、`jvm_gc_pause_seconds`、`http_server_requests_seconds_bucket` を見る |
 

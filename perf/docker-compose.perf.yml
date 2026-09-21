@@ -32,6 +32,8 @@ services:
       # 実行中は http://localhost:5665 でライブ表示、終了時に HTML レポートを書き出す
       K6_WEB_DASHBOARD: "true"
       K6_WEB_DASHBOARD_HOST: 0.0.0.0
+      # 他のコンテナと同じく JST に揃える（k6 のログ時刻と docker-stats の時刻を突き合わせるため）
+      TZ: Asia/Tokyo
     ports:
       - "5665:5665"
     volumes:

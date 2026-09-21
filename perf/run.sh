@@ -182,6 +182,8 @@ cmd_run() {
     k6 run --summary-export "/results/$run_id-summary.json" "/scripts/tests/$kind.js" || code=$?
 
   kill "$sampler" 2>/dev/null || true
+  # wait で回収しないと、bash が「Terminated」というジョブ終了通知を出力に混ぜる
+  wait "$sampler" 2>/dev/null || true
   trap - EXIT
   snapshot_metrics "$prefix-prometheus-after.txt"
 
