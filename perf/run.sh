@@ -174,11 +174,19 @@ cmd_run() {
   trap 'kill "$sampler" 2>/dev/null || true' EXIT
 
   # k6 イメージの既定ユーザーでは、Linux だとマウントした results に書けない。実行者の uid で動かす
+  # PERF_ で始まる環境変数はすべて k6 に渡す（PERF_LOAD_VUS や PERF_SOAK_DURATION など、
+  # 各テストの VU 数・時間を一時的に変えるためのもの）。シードと同じ件数も忘れず渡る
+  local perf_env=() name
+  while IFS= read -r name; do
+    perf_env+=(-e "$name=${!name}")
+  done < <(compgen -e | grep '^PERF_' || true)
+
   local code=0
   "${DC_PERF[@]}" run --rm --service-ports --user "$(id -u):$(id -g)" \
     -e K6_WEB_DASHBOARD_EXPORT="/results/$run_id-report.html" \
     -e PERF_USERS="${PERF_USERS:-1000}" \
     -e PERF_POSTS="${PERF_POSTS:-100000}" \
+    ${perf_env[@]+"${perf_env[@]}"} \
     k6 run --summary-export "/results/$run_id-summary.json" "/scripts/tests/$kind.js" || code=$?
 
   kill "$sampler" 2>/dev/null || true

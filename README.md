@@ -70,6 +70,7 @@ MyTimeline/
 │       ├── types/            # API レスポンス型定義（バックエンドの DTO と 1:1）
 │       └── utils/            # 表示用の小さなユーティリティ（相対時刻など）
 ├── docs/                     # 設計ドキュメント（要件定義・機能定義書）
+├── perf/                     # パフォーマンステスト（k6。任意のタイミングで手動実行）
 ├── docker-compose.yml        # PostgreSQL + MinIO + Backend
 └── .claude/                  # Claude Code 用スキル・権限設定
 ```
@@ -329,6 +330,7 @@ curl -s -H "Authorization: Bearer <accessToken>" http://localhost:8080/actuator/
 | [docs/10_logging_design.md](docs/10_logging_design.md) | ログ設計（構造化ログ・リクエスト ID・PII 規約） |
 | [docs/11_monitoring_design.md](docs/11_monitoring_design.md) | 監視運用設計（監視項目・閾値・通知） |
 | [docs/12_incident_response.md](docs/12_incident_response.md) | 障害対応運用フロー（重大度・Runbook・ポストモーテム） |
+| [docs/13_performance_test.md](docs/13_performance_test.md) | パフォーマンステスト（方針・合否基準・テスト種別・ベースライン記録）。実行手順は [perf/README.md](perf/README.md) |
 
 ### 機能定義書（機能単位の詳細）
 

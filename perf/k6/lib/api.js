@@ -4,8 +4,39 @@
 //          メトリクスを分けてしまい、id や cursor の数だけ系列が増えて集計できなくなる
 import http from 'k6/http';
 import { check } from 'k6';
+import encoding from 'k6/encoding';
+import { Trend } from 'k6/metrics';
 import { BASE_URL } from './config.js';
 import { bearer, invalidateSession } from './auth.js';
+
+// エンドポイント別の応答時間。k6 の集計は http_req_duration をタグで分けて表示してくれないので、
+// エンドポイントごとに Trend を用意して、どこが遅いのかを集計結果から直接読めるようにする。
+// メトリクスは init 時にしか作れないため、先に全部宣言しておく
+const ENDPOINT_NAMES = [
+  'GET /api/timeline/all',
+  'GET /api/timeline/following',
+  'GET /api/posts/{id}',
+  'GET /api/posts/{id}/comments',
+  'GET /api/users/{username}',
+  'GET /api/users/{username}/posts',
+  'GET /api/users/search',
+  'GET /api/auth/me',
+  'POST /api/posts/{id}/like',
+  'DELETE /api/posts/{id}/like',
+  'POST /api/users/{id}/follow',
+  'DELETE /api/users/{id}/follow',
+  'POST /api/posts/{id}/comments',
+  'POST /api/posts',
+  'POST /api/posts (image)',
+  'DELETE /api/posts/{id}',
+];
+const endpointTrends = Object.fromEntries(
+  ENDPOINT_NAMES.map((name) => [
+    name,
+    // 例: 'GET /api/posts/{id}' → ep_GET_api_posts_id
+    new Trend(`ep_${name.replace(/[^A-Za-z]+/g, '_').replace(/_$/, '')}`, true),
+  ]),
+);
 
 function params(session, type, name, extraHeaders = {}) {
   return {
@@ -20,6 +51,9 @@ function verify(res, name, expectedStatus) {
     invalidateSession();
   }
   check(res, { [`${name}: ${expectedStatus}`]: (r) => r.status === expectedStatus });
+  if (endpointTrends[name]) {
+    endpointTrends[name].add(res.timings.duration);
+  }
   return res;
 }
 
@@ -131,6 +165,39 @@ export function createTextPost(session, body) {
     `${BASE_URL}/api/posts`,
     payload,
     params(session, 'write', name, { 'Content-Type': `multipart/form-data; boundary=${boundary}` }),
+  );
+  return verify(res, name, 201);
+}
+
+// ---- upload ----
+
+// 既定のアップロード画像は 1×1 px の PNG（約 70 バイト）。リポジトリに画像ファイルを置かずに済む。
+// これで測れるのは「形式検証 + S3 への PutObject の往復」で、転送量の影響は含まない。
+// 実サイズに近い画像で測りたいときは perf/k6/assets/upload.jpg を置く（git 管理外、2 MB 以下）
+const TINY_PNG_BASE64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+function loadUploadImage() {
+  try {
+    // open() は init 時にしか呼べない。ファイルが無ければ例外になるので既定の画像に切り替える
+    return { data: open('../assets/upload.jpg', 'b'), filename: 'upload.jpg', contentType: 'image/jpeg' };
+  } catch (_) {
+    return {
+      data: encoding.b64decode(TINY_PNG_BASE64, 'std'),
+      filename: 'tiny.png',
+      contentType: 'image/png',
+    };
+  }
+}
+const uploadImage = loadUploadImage();
+
+/** 画像 1 枚つきの投稿。ファイルを含むオブジェクトを渡すと、k6 が multipart を組み立ててくれる。 */
+export function createImagePost(session, body) {
+  const name = 'POST /api/posts (image)';
+  const res = http.post(
+    `${BASE_URL}/api/posts`,
+    { body, images: http.file(uploadImage.data, uploadImage.filename, uploadImage.contentType) },
+    params(session, 'upload', name),
   );
   return verify(res, name, 201);
 }
