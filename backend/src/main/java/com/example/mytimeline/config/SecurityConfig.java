@@ -1,6 +1,7 @@
 package com.example.mytimeline.config;
 
 import com.example.mytimeline.dto.ErrorResponse;
+import com.example.mytimeline.security.BoundedPasswordEncoder;
 import com.example.mytimeline.security.JwtAuthenticationFilter;
 import com.example.mytimeline.security.JwtService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -79,9 +80,13 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /**
+     * BCrypt の同時実行数は CPU コア数までに絞る（理由は {@link BoundedPasswordEncoder}）。
+     * コンテナの CPU 制限は {@code availableProcessors} に反映される。
+     */
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        return new BoundedPasswordEncoder(new BCryptPasswordEncoder(), Runtime.getRuntime().availableProcessors());
     }
 
     /**
