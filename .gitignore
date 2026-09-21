@@ -27,3 +27,7 @@ terraform.tfvars
 crash.log
 crash.*.log
 *.tfplan
+
+# パフォーマンステストの結果（実行のたびに増える。比較用の数値は docs/13 に転記する）
+perf/results/*
+!perf/results/.gitkeep
