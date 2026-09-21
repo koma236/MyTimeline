@@ -31,3 +31,6 @@ crash.*.log
 # パフォーマンステストの結果（実行のたびに増える。比較用の数値は docs/13 に転記する）
 perf/results/*
 !perf/results/.gitkeep
+
+# 実サイズの画像でアップロードを測りたいときに置く任意のファイル（perf/README.md）
+perf/k6/assets/

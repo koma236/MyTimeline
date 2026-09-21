@@ -36,3 +36,12 @@ export const SLO_THRESHOLDS = {
   http_req_failed: ['rate<0.01'],
   checks: ['rate>0.99'],
 };
+
+/** '90s' / '10m' / '1h' を秒に直す。複数シナリオの長さを揃える計算に使う。 */
+export function toSeconds(duration) {
+  const match = /^(\d+)(s|m|h)$/.exec(duration);
+  if (!match) {
+    throw new Error(`時間は 90s / 10m / 1h の形式で指定してください: ${duration}`);
+  }
+  return Number(match[1]) * { s: 1, m: 60, h: 3600 }[match[2]];
+}

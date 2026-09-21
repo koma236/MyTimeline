@@ -10,6 +10,7 @@
 import exec from 'k6/execution';
 import http from 'k6/http';
 import { check, fail } from 'k6';
+import { Counter } from 'k6/metrics';
 import {
   AUTH_FLOW_USER_COUNT,
   BASE_URL,
@@ -23,8 +24,15 @@ import {
 // アクセストークンの有効期限は 15 分。余裕を持って 12 分で取り直す（soak で 15 分境界をまたぐため）
 const TOKEN_MAX_AGE_MS = 12 * 60 * 1000;
 
+// なぜログインしたかを数える。soak で「15 分境界をまたいでも取り直せている」ことを、
+// token_age が 1 以上・after_401 が 0 であることから確かめられる
+const loginInitial = new Counter('perf_login_initial');
+const loginTokenAge = new Counter('perf_login_token_age');
+const loginAfter401 = new Counter('perf_login_after_401');
+
 // k6 は VU ごとに独立した JS ランタイムを持つので、モジュール変数は VU ごとの状態になる
 let session = null;
+let invalidatedBy401 = false;
 
 export function login(username) {
   const res = http.post(
@@ -70,6 +78,14 @@ export function ensureSession(userId = normalUserIdForThisVu()) {
   const username = usernameFor(userId);
   const stale = session && Date.now() - session.obtainedAt > TOKEN_MAX_AGE_MS;
   if (!session || stale || session.username !== username) {
+    if (stale) {
+      loginTokenAge.add(1);
+    } else if (invalidatedBy401) {
+      loginAfter401.add(1);
+    } else {
+      loginInitial.add(1);
+    }
+    invalidatedBy401 = false;
     session = login(username);
   }
   return session;
@@ -78,6 +94,7 @@ export function ensureSession(userId = normalUserIdForThisVu()) {
 /** 401 を受けたときに呼ぶ。次の ensureSession でログインし直させる。 */
 export function invalidateSession() {
   session = null;
+  invalidatedBy401 = true;
 }
 
 export function bearer(s) {
