@@ -27,10 +27,10 @@
 #### リフレッシュトークン
 
 - 実体は **`SecureRandom` による 256bit の不透明なランダム値**。JWT ではない。DB 照合が前提なので署名で自己完結させる意味がないため
-- **httpOnly Cookie** で往復させる。属性は `HttpOnly; SameSite=Lax; Path=/api/auth; Max-Age=14日`。JavaScript から読めないため XSS でも持ち出されない
+- **httpOnly Cookie** で往復させる。属性は `HttpOnly; SameSite=Lax; Path=/api/auth; Max-Age=7日`。JavaScript から読めないため XSS でも持ち出されない
   - `Secure` 属性は `REFRESH_COOKIE_SECURE` で切り替える。HTTPS の本番では必ず `true` にすること
   - `Path=/api/auth` により、投稿 API など他のエンドポイントには送信されない
-- 有効期限は既定 **14 日**（`JWT_REFRESH_EXPIRATION_DAYS`）
+- 有効期限は既定 **7 日**（`JWT_REFRESH_EXPIRATION_DAYS`）
 - DB（`refresh_tokens`）には**生値ではなく SHA-256 ハッシュを保存する**。パスワードと同じく、DB が漏れてもそのままセッションを乗っ取られないようにするため
 - **使用するたびにローテーションする。** 1 回使ったトークンは失効させ、新しいトークンを発行して Cookie を差し替える
 

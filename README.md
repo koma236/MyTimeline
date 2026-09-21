@@ -188,7 +188,7 @@ curl -s http://localhost:8080/actuator/health/readiness  # 受付可能か（DB 
 | POST | `/api/auth/logout` | ログアウト（リフレッシュトークンを失効） | 実装済み |
 | GET | `/api/auth/me` | ログイン中ユーザー取得 | 実装済み |
 
-アクセストークン（`Authorization: Bearer`・15 分）とリフレッシュトークン（httpOnly Cookie・14 日・ローテーションあり）の 2 トークン方式。詳細は [F01](docs/features/F01_auth.md) を参照。
+アクセストークン（`Authorization: Bearer`・15 分）とリフレッシュトークン（httpOnly Cookie・7 日・ローテーションあり）の 2 トークン方式。詳細は [F01](docs/features/F01_auth.md) を参照。
 
 ### タイムライン（[F02](docs/features/F02_timeline.md)）
 
