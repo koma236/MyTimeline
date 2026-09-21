@@ -1,0 +1,39 @@
+# パフォーマンステスト用の上書きファイル。単体では使わず、必ず docker-compose.yml に重ねる。
+#   docker compose -f docker-compose.yml -f perf/docker-compose.perf.yml ...
+# 直接叩かず bash perf/run.sh を使うこと（perf 用 DB の作成や後片付けまで面倒を見る）。
+#
+# 相対パスは「最初に指定した compose ファイルのディレクトリ」= リポジトリのルートが基準になる。
+services:
+  backend:
+    environment:
+      # 開発データを汚さないよう、同じ Postgres コンテナ内の別データベースを使う。
+      # docker-compose.yml は container_name を固定しているため、プロジェクト名を変えて
+      # 開発用と並行起動する方法は採れない（コンテナ名が衝突する）
+      DB_NAME: mytimeline_perf
+      # 画像アップロードのシナリオが作るオブジェクトも、開発用バケットと分ける
+      S3_BUCKET: mytimeline-images-perf
+      # ヒープを固定して計測条件を揃える。Dockerfile は JVM オプションを受け取らないが、
+      # JAVA_TOOL_OPTIONS は JVM が自分で読むので Dockerfile を変えずに渡せる
+      JAVA_TOOL_OPTIONS: "-Xms512m -Xmx512m"
+      # 負荷中のログ出力そのものが性能に影響しないよう絞る
+      LOG_LEVEL_APP: WARN
+    # 実行のたびに使える CPU・メモリが変わると前回と比較できないため上限を固定する
+    cpus: 2
+    mem_limit: 1g
+
+  k6:
+    # 1.x 系で固定。メジャーを上げるときはスクリプトの互換性を確認してから
+    image: grafana/k6:1.8.1
+    # profiles を付けたサービスは、通常の `docker compose up` では起動しない
+    profiles: ["perf"]
+    environment:
+      # 同じ compose ネットワーク内なのでサービス名で到達する
+      BASE_URL: http://backend:8080
+      # 実行中は http://localhost:5665 でライブ表示、終了時に HTML レポートを書き出す
+      K6_WEB_DASHBOARD: "true"
+      K6_WEB_DASHBOARD_HOST: 0.0.0.0
+    ports:
+      - "5665:5665"
+    volumes:
+      - ./perf/k6:/scripts:ro
+      - ./perf/results:/results
