@@ -1,6 +1,7 @@
 # API 実装と docs/api/openapi.json、そこから生成するフロントエンドの型の乖離を検知する。
+# PR ごと・main への push ごとに実行する。
 #
-# check ジョブ: OpenApiSpecExportTest が仕様書を再生成するので、コミット済みの
+# openapi-json ジョブ: OpenApiSpecExportTest が仕様書を再生成するので、コミット済みの
 # ファイルと差分が出たら「コードを変えたのに仕様書を更新していない」として失敗させる。
 # 落ちたら手元で backend/ の `./gradlew test --tests "*.OpenApiSpecExportTest"` を
 # 実行し、更新された docs/api/openapi.json をコミットすること。
@@ -9,14 +10,23 @@
 # 差分を検査し、さらに typecheck で手書き型との一致（src/types/apiContract.ts）を
 # 検証する。落ちたら frontend/ で `npm run generate:api` を実行し、生成型の変更と
 # それに合わせた手書き型の修正をコミットすること。
+# 各ジョブは main のブランチ保護で必須ステータスチェックに登録している（ジョブ id を変えたら設定も更新すること）。
 name: OpenAPI spec check
 
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# 同じ PR への連続 push では古い実行を止める。main への push は最後まで走らせる
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  check:
+  openapi-json:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

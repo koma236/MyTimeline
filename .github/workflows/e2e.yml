@@ -1,15 +1,25 @@
-# PR ごとに E2E テスト（Playwright）のシナリオ・耐性・アクセシビリティを実行する。
+# PR ごと・main への push ごとに E2E テスト（Playwright）のシナリオ・耐性・アクセシビリティを実行する。
 #
 # backend は docker compose で e2e 用 DB（mytimeline_e2e）を向けて起動し（e2e/run.sh up）、
 # フロントは Playwright が本番ビルド + vite preview を自動起動する。
 # ブラウザ性能の計測（run perf）は共有ランナーでは数値が安定しないため CI では実行しない。
+# E2E コード自体の Lint / 型チェックは quality-check.yml の e2e-static ジョブで行う。
 # 落ちたら Playwright のレポート（アーティファクト playwright-report）でトレースを見ること。
 # 手元での再現は e2e/README.md。
+# scenario ジョブは main のブランチ保護で必須ステータスチェックに登録している（ジョブ id を変えたら設定も更新すること）。
 name: E2E test
 
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# 同じ PR への連続 push では古い実行を止める。main への push は最後まで走らせる
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   scenario:
