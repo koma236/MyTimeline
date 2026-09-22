@@ -88,6 +88,9 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
     { auto: true },
   ],
 
+  // Playwright は fixture の第 1 引数を必ずオブジェクトパターンで書く決まり（依存 fixture の検出に使う）。
+  // 依存が無いときは空パターンになる
+  // oxlint-disable-next-line no-empty-pattern
   loginAs: async ({}, use) => {
     await use(loginViaCookie)
   },

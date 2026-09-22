@@ -1,0 +1,18 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  // frontend/.oxlintrc.json と同じ方針（correctness / suspicious / perf を error）。
+  // ブラウザ内の React コードではないので react / jsx-a11y プラグインは入れない
+  "plugins": ["typescript", "oxc", "import", "promise"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "error"
+  },
+  // Playwright が生成するレポートと計測結果は対象外
+  "ignorePatterns": ["playwright-report", "test-results", "results"],
+  "rules": {
+    // ブラウザ操作（クリック → 待機 → 次の操作）や性能計測の反復は順序に意味があり、
+    // Promise.all で並列化すると壊れる。E2E では直列の await がむしろ正しい
+    "no-await-in-loop": "off"
+  }
+}

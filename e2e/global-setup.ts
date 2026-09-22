@@ -13,6 +13,7 @@ export default async function globalSetup(): Promise<void> {
     throw new Error(
       `backend が応答しません（${url}: ${String(caught)}）。` +
         '先に bash e2e/run.sh up を実行してください',
+      { cause: caught },
     )
   }
 }

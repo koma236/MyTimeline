@@ -9,12 +9,15 @@
     "test:scenario": "playwright test -c playwright.config.ts",
     "test:perf": "playwright test -c playwright.perf.config.ts",
     "report": "playwright show-report",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint --max-warnings=0",
+    "check": "npm run lint && npm run typecheck"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "^1.63.0",
     "@types/node": "^24.13.2",
+    "oxlint": "^1.71.0",
     "typescript": "~6.0.2"
   }
 }
