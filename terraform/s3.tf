@@ -3,6 +3,8 @@
 # アプリ側はバケット名を S3_BUCKET 環境変数で受けるため、命名は自由（account_id でグローバル一意化）。
 resource "aws_s3_bucket" "images" {
   bucket = "${var.project}-images-${data.aws_caller_identity.current.account_id}"
+  # destroy 時に画像が残っていてもバケットごと消す（学習用途。残したい画像は事前に退避する）
+  force_destroy = true
 }
 
 resource "aws_s3_bucket_public_access_block" "images" {
