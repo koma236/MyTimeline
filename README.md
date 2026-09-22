@@ -32,7 +32,7 @@ X（旧 Twitter）風のタイムライン型 SNS アプリ。テキストと画
 | データベース | PostgreSQL 15（ローカル）/ PostgreSQL 16（RDS, 本番想定） |
 | 画像ストレージ | AWS S3（ローカルは S3 互換の MinIO） |
 | ローカル実行 | Docker + Docker Compose |
-| 本番インフラ（暫定・前提） | AWS（CloudFront + S3 + ALB + EC2 + RDS） |
+| 本番インフラ | AWS（CloudFront + S3 + ALB + ECS Fargate + RDS）。EC2 なし。Terraform で構築（[terraform/](terraform/README.md)） |
 
 詳細は [docs/02_tech_stack.md](docs/02_tech_stack.md) を参照。
 
@@ -72,6 +72,7 @@ MyTimeline/
 ├── docs/                     # 設計ドキュメント（要件定義・機能定義書）
 ├── perf/                     # パフォーマンステスト（k6。任意のタイミングで手動実行）
 ├── e2e/                      # E2E テスト（Playwright。シナリオ・耐性・アクセシビリティ・ブラウザ性能）
+├── terraform/                # 本番インフラ（AWS）の IaC。構築・デプロイ・destroy の手順は terraform/README.md
 ├── docker-compose.yml        # PostgreSQL + MinIO + Backend
 └── .claude/                  # Claude Code 用スキル・権限設定
 ```
@@ -288,17 +289,18 @@ curl -s http://localhost:8080/actuator/health/readiness  # 受付可能か（DB 
 
 ---
 
-## 本番インフラ（暫定・前提）
+## 本番インフラ（AWS）
 
-AWS でのサーバ構築可否は未確定。構築する場合は以下を前提とする。
+EC2 は使わず、コンテナ（ECS Fargate）とマネージドサービスだけで構成する。学習用途のため、使わないときは `terraform destroy` し、必要になったら `apply` で作り直す。
 
 ```
-Browser → CloudFront ┬─ /*      → S3 (静的: React)
-                     ├─ /api/*  → ALB → EC2 (Nginx → Spring Boot :8080) → RDS PostgreSQL
-                     └─ 画像     → S3 (画像バケット)
+Browser → CloudFront ┬─ /*      → S3 (静的: React、OAC)
+                     ├─ /api/*  → ALB → ECS Fargate (Spring Boot :8080) → RDS PostgreSQL 16
+                     └─ 画像     → S3 (画像バケット。署名付き URL)
 ```
 
 - インフラ構成の全体像・各リソースの責務: [docs/09_infrastructure.md](docs/09_infrastructure.md)
+- Terraform と構築・デプロイ・destroy の手順: [terraform/README.md](terraform/README.md)
 
 ---
 

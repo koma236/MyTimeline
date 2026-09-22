@@ -49,7 +49,7 @@
 | 画像ストレージ | AWS S3（AWS SDK for Java v2） | 投稿画像・プロフィール画像を保存。DB にはキーのみ記録。詳細は [09_infrastructure.md](09_infrastructure.md) |
 | 画像ストレージ（ローカル） | MinIO | S3 互換。docker-compose で起動する。アプリのコードは AWS SDK のままで、接続先の設定だけが変わる |
 
-## 本番インフラ（AWS・暫定前提）
+## 本番インフラ（AWS）
 
-AWS でのサーバ構築可否は未確定だが、**ALB + EC2 + RDS + S3** を前提とした構成を想定する。
+**CloudFront + S3 + ALB + ECS Fargate + RDS** で構成する（EC2 なし）。Terraform で構築し、使わないときは destroy する。
 詳細は [09_infrastructure.md](09_infrastructure.md) を参照。

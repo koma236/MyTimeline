@@ -1,6 +1,6 @@
 # 15. パフォーマンステスト
 
-> **前提:** 対象は **バックエンド API**、実行場所は **ローカルの Docker Compose** のみ。本番相当環境（EC2 / RDS / ALB）は未構築（[09_infrastructure.md](09_infrastructure.md)）のため、ここで得る数値は**絶対値ではなく、同じマシンでの前回との比較**に使う。
+> **前提:** 対象は **バックエンド API**、実行場所は **ローカルの Docker Compose** のみ。本番相当環境（ECS Fargate / RDS / ALB）は Terraform で構築できるが常時稼働していない（[09_infrastructure.md](09_infrastructure.md)）ため、ここで得る数値は**絶対値ではなく、同じマシンでの前回との比較**に使う。
 > 実行手順は [perf/README.md](../perf/README.md) を参照。
 
 ### 15.1 位置づけ

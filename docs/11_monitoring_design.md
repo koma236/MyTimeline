@@ -1,7 +1,7 @@
 # 13. 監視運用設計
 
 > **前提:** 本ドキュメントは **アプリケーション層（Spring Boot）の監視項目と閾値** を定める。
-> 監視基盤（Datadog / CloudWatch など）は現時点で存在せず、EC2 / RDS / ALB のインフラ層監視（CPU・ディスク・RDS 接続数・ALB ヘルス）も [09_infrastructure.md](09_infrastructure.md) の構築とあわせて別途設計する。
+> 監視基盤（Datadog / CloudWatch アラームなど）は現時点で存在せず、ECS / RDS / ALB のインフラ層監視（CPU・メモリ・RDS 接続数・ALB ヘルス）も [09_infrastructure.md](09_infrastructure.md) の構成に対して別途設計する。
 > 閾値は **一般的な Web アプリケーションの目安** であり、本番トラフィックが分かった時点で見直す（[13.6](#136-閾値の見直し)）。
 
 ### 13.1 監視の考え方
@@ -132,7 +132,7 @@
 | 項目 | 状況 |
 |------|------|
 | 監視エージェントの配置と `/actuator/prometheus` の公開方式 | 未決（[08_constraints.md](08_constraints.md) TBD-16） |
-| ALB ヘルスチェックのパスを `/actuator/health/readiness` にする | [09_infrastructure.md](09_infrastructure.md) 構築時に設定 |
+| ALB ヘルスチェックのパスを `/actuator/health/readiness` にする | **設定済み**（`terraform/alb.tf`。連続 3 回失敗で振り分けから外す） |
 | 外形監視（Synthetics: ログイン → タイムライン取得） | 未決。M-07 の代替として有効 |
-| インフラ層（EC2 CPU / ディスク、RDS CPU / 接続数 / ストレージ、S3 4xx/5xx） | インフラ構築時に別途設計 |
+| インフラ層（ECS CPU / メモリ、RDS CPU / 接続数 / ストレージ、ALB 5xx / ターゲット健全性、S3 4xx/5xx） | 別途設計（CloudWatch アラーム） |
 | フロントエンド（CloudFront 5xx、JS エラー収集） | 対象外（本書はバックエンドのみ） |
