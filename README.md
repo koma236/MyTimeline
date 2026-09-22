@@ -163,7 +163,7 @@ bash e2e/run.sh up && bash e2e/run.sh run scenario && bash e2e/run.sh down
 | E2E test | `scenario` | Playwright のシナリオ・耐性・アクセシビリティ |
 | OpenAPI spec check | `openapi-json` / `frontend-types` | 仕様書と生成型のドリフト検知 |
 
-この 6 ジョブは `main` のブランチ保護で **必須ステータスチェック** に登録してあり、1 つでも失敗した PR はマージできない。ジョブ id を変えたときは GitHub の Settings → Branches で必須チェックの名前も更新すること。
+この 6 ジョブは `main` のブランチ保護で **必須ステータスチェック** に登録してあり、1 つでも失敗した PR はマージできない。管理者にも適用（enforce_admins）を有効にしているので、リポジトリの所有者でも迂回できない。ジョブ id を変えたときは GitHub の Settings → Branches で必須チェックの名前も更新すること。
 
 ---
 
