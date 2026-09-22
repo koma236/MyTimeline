@@ -42,6 +42,13 @@ class AuthServiceTest {
     private RefreshTokenService refreshTokenService;
 
     /**
+     * 登録の DB 書き込み（INSERT・読み直し・リフレッシュトークン発行）はこのクラスに委譲される。
+     * 中身は UserRegistrarTest で、トランザクションの境界は AuthTransactionBoundaryIntegrationTest で確かめる。
+     */
+    @Mock
+    private UserRegistrar userRegistrar;
+
+    /**
      * アバター URL の組み立ては署名付き URL の発行を伴うためモックにする。
      * ここでは何も stub しないので、常に null（＝アバター未設定）として振る舞う。
      */
@@ -58,7 +65,7 @@ class AuthServiceTest {
             new JwtProperties("test-secret-key-for-unit-test-at-least-32-bytes", 60, 14, false)
         );
         authService = new AuthService(
-            userMapper, passwordEncoder, jwtService, refreshTokenService, avatarUrlFactory
+            userMapper, passwordEncoder, jwtService, refreshTokenService, userRegistrar, avatarUrlFactory
         );
     }
 
@@ -81,13 +88,13 @@ class AuthServiceTest {
     void signupStoresHashedPassword() {
         when(userMapper.findByUsername("taro")).thenReturn(Optional.empty());
         when(userMapper.findByEmail("taro@example.com")).thenReturn(Optional.empty());
-        when(userMapper.findById(any())).thenReturn(Optional.of(existingUser()));
-        when(refreshTokenService.issue(1L)).thenReturn(ISSUED_REFRESH_TOKEN);
+        when(userRegistrar.register(any()))
+            .thenReturn(new UserRegistrar.Registration(existingUser(), ISSUED_REFRESH_TOKEN));
 
         AuthService.AuthResult result = authService.signup(signupRequest());
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
-        verify(userMapper).insert(captor.capture());
+        verify(userRegistrar).register(captor.capture());
         String storedHash = captor.getValue().getPasswordHash();
 
         assertThat(storedHash).isNotEqualTo(RAW_PASSWORD);
@@ -101,8 +108,8 @@ class AuthServiceTest {
     void signupIssuesRefreshTokenOutsideBody() {
         when(userMapper.findByUsername("taro")).thenReturn(Optional.empty());
         when(userMapper.findByEmail("taro@example.com")).thenReturn(Optional.empty());
-        when(userMapper.findById(any())).thenReturn(Optional.of(existingUser()));
-        when(refreshTokenService.issue(1L)).thenReturn(ISSUED_REFRESH_TOKEN);
+        when(userRegistrar.register(any()))
+            .thenReturn(new UserRegistrar.Registration(existingUser(), ISSUED_REFRESH_TOKEN));
 
         AuthService.AuthResult result = authService.signup(signupRequest());
 
@@ -112,7 +119,7 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("ユーザー名が重複していれば username を指す例外を投げ、INSERT しない")
+    @DisplayName("ユーザー名が重複していれば username を指す例外を投げ、登録処理に進まない")
     void signupRejectsDuplicateUsername() {
         when(userMapper.findByUsername("taro")).thenReturn(Optional.of(existingUser()));
 
@@ -120,11 +127,11 @@ class AuthServiceTest {
             .isInstanceOf(DuplicateFieldException.class)
             .satisfies(e -> assertThat(((DuplicateFieldException) e).getField()).isEqualTo("username"));
 
-        verify(userMapper, never()).insert(any());
+        verify(userRegistrar, never()).register(any());
     }
 
     @Test
-    @DisplayName("メールアドレスが重複していれば email を指す例外を投げ、INSERT しない")
+    @DisplayName("メールアドレスが重複していれば email を指す例外を投げ、登録処理に進まない")
     void signupRejectsDuplicateEmail() {
         when(userMapper.findByUsername("taro")).thenReturn(Optional.empty());
         when(userMapper.findByEmail("taro@example.com")).thenReturn(Optional.of(existingUser()));
@@ -133,7 +140,7 @@ class AuthServiceTest {
             .isInstanceOf(DuplicateFieldException.class)
             .satisfies(e -> assertThat(((DuplicateFieldException) e).getField()).isEqualTo("email"));
 
-        verify(userMapper, never()).insert(any());
+        verify(userRegistrar, never()).register(any());
     }
 
     @Test

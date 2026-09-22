@@ -19,6 +19,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 新規登録・ログイン・トークン更新の業務ロジック。
+ *
+ * <p>{@link #signup} と {@link #login} にはあえて {@code @Transactional} を付けていない。
+ * BCrypt のハッシュ化・照合は約 80 ミリ秒の CPU 処理で、トランザクションの中で行うと
+ * その間ずっと DB 接続を握り続ける。ログインが集中すると HikariCP の接続が占有され、
+ * 無関係なリクエストまで接続待ちになる（#67）。DB を触る部分は、
+ * それぞれが自分のトランザクションを持つ {@link UserRegistrar} と
+ * {@link RefreshTokenService} に任せ、BCrypt の間は接続を持たないようにしている。</p>
  */
 @Service
 public class AuthService {
@@ -27,6 +34,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
+    private final UserRegistrar userRegistrar;
     private final AvatarUrlFactory avatarUrlFactory;
 
     public AuthService(
@@ -34,19 +42,23 @@ public class AuthService {
         PasswordEncoder passwordEncoder,
         JwtService jwtService,
         RefreshTokenService refreshTokenService,
+        UserRegistrar userRegistrar,
         AvatarUrlFactory avatarUrlFactory
     ) {
         this.userMapper = userMapper;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.refreshTokenService = refreshTokenService;
+        this.userRegistrar = userRegistrar;
         this.avatarUrlFactory = avatarUrlFactory;
     }
 
     /**
      * アカウントを作成し、そのままログイン状態にする（F01 2. 機能詳細）。
+     *
+     * <p>重複の事前チェックをハッシュ化より先に行うのは、重複で弾かれるリクエストに
+     * BCrypt の CPU を使わないため。</p>
      */
-    @Transactional
     public AuthResult signup(SignupRequest request) {
         if (userMapper.findByUsername(request.username()).isPresent()) {
             throw new DuplicateFieldException("username", "このユーザー名は既に使用されています");
@@ -62,19 +74,13 @@ public class AuthService {
         // 平文は保存しない（docs/05_nonfunctional.md セキュリティ）
         user.setPasswordHash(passwordEncoder.encode(request.password()));
 
-        // 事前チェックと INSERT の間に別リクエストが登録した場合は
-        // UNIQUE 制約違反（DuplicateKeyException）となり GlobalExceptionHandler が 409 に変換する
-        userMapper.insert(user);
-
-        // created_at などの DB 側で採番された値を含めて返すため読み直す
-        User created = userMapper.findById(user.getId()).orElseThrow();
-        return issueFor(created);
+        UserRegistrar.Registration registration = userRegistrar.register(user);
+        return toResult(registration.user(), registration.rawRefreshToken());
     }
 
     /**
      * メールアドレスまたはユーザー名とパスワードで認証し、トークンを発行する。
      */
-    @Transactional
     public AuthResult login(LoginRequest request) {
         User user = findByIdentifier(request.identifier())
             .orElseThrow(InvalidCredentialsException::new);
@@ -83,7 +89,7 @@ public class AuthService {
             throw new InvalidCredentialsException();
         }
 
-        return issueFor(user);
+        return toResult(user, refreshTokenService.issue(user.getId()));
     }
 
     /**
@@ -103,10 +109,7 @@ public class AuthService {
             // トークンは有効だが対象ユーザーが削除済みのケース
             .orElseThrow(InvalidRefreshTokenException::new);
 
-        return new AuthResult(
-            new AuthResponse(jwtService.generateAccessToken(user), toResponse(user)),
-            rotation.rawToken()
-        );
+        return toResult(user, rotation.rawToken());
     }
 
     /**
@@ -150,10 +153,10 @@ public class AuthService {
             .or(() -> userMapper.findByUsername(identifier));
     }
 
-    private AuthResult issueFor(User user) {
+    private AuthResult toResult(User user, String rawRefreshToken) {
         return new AuthResult(
             new AuthResponse(jwtService.generateAccessToken(user), toResponse(user)),
-            refreshTokenService.issue(user.getId())
+            rawRefreshToken
         );
     }
 
