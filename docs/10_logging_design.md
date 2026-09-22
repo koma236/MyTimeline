@@ -1,7 +1,7 @@
 # 12. ログ設計
 
 > **前提:** 本ドキュメントは **アプリケーション（Spring Boot）側のログ設計** を定める。
-> ログの収集・保管・検索を行う基盤（Datadog / CloudWatch Logs など）は現時点で存在せず、導入時期も未定（[08_constraints.md](08_constraints.md) TBD-15）。
+> 本番（ECS Fargate）では標準出力が CloudWatch Logs（`/ecs/mytimeline`）に送られる（[09_infrastructure.md](09_infrastructure.md)）。Datadog 等の検索基盤は未導入（[08_constraints.md](08_constraints.md) TBD-15）。
 > 基盤を入れる日に **環境変数の変更だけで接続できる** 状態にしておくことが本設計の目的であり、基盤固有の設定は「将来手順」として末尾にまとめる。
 
 ### 12.1 方針

@@ -72,7 +72,7 @@ React + Spring Boot プロジェクトの全体的なコード品質チェック
 
 ### インフラ (Terraform)
 
-作業ディレクトリは `terraform/`（S3 画像バケット + EC2 用 IAM を定義。手順は `terraform/README.md`）。
+作業ディレクトリは `terraform/`（VPC / ALB / ECS Fargate / ECR / RDS / CloudFront / S3 / IAM / SSM を定義。手順は `terraform/README.md`）。
 
 1. `terraform fmt -check -recursive` を実行してフォーマット違反を確認し、`terraform fmt -recursive` で修正する
 2. `terraform validate` を実行して構文・参照エラーがないことを確認する（必要に応じて先に `terraform init`）
@@ -84,7 +84,8 @@ React + Spring Boot プロジェクトの全体的なコード品質チェック
    - 主要リソースに `tags = { Name = ... }` などタグ付けされているか
    - S3 / RDS 等で意図しない public access が許可されていないか（`block_public_acls` 等の確認）
    - セキュリティグループの ingress に `0.0.0.0/0` を必要以上に許可していないか
-   - user_data やインラインスクリプト内のシェル設定が、OS 既定との衝突を考慮しているか（例: Nginx の `default_server` 競合）
+   - ECS タスク定義の環境変数が `docker-compose.yml` の backend サービスと対応しているか（追加した環境変数の反映漏れがないか）
+   - すぐ destroy / 再構築できる設定（S3 `force_destroy`、ECR `force_delete`、RDS `skip_final_snapshot`、削除保護なし）が外れていないか
 
 ### ドキュメント整合性
 

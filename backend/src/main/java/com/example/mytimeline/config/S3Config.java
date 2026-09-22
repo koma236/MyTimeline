@@ -76,8 +76,8 @@ public class S3Config {
         /**
          * アクセスキーが設定されていれば静的な認証情報、空なら既定のチェーンを使う。
          *
-         * <p>ローカルの MinIO はキーを直接渡すしかないが、本番の EC2 では
-         * IAM ロールから取得させたい。キーを空にするだけで後者に切り替わる。</p>
+         * <p>ローカルの MinIO はキーを直接渡すしかないが、本番の ECS Fargate では
+         * タスクロールから取得させたい。キーを空にするだけで後者に切り替わる。</p>
          */
         AwsCredentialsProvider credentialsProvider() {
             if (StringUtils.hasText(properties.accessKey())) {
