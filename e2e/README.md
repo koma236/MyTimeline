@@ -4,7 +4,7 @@
 あわせて **ブラウザ側の性能**（操作の反映時間・読み込み指標・長いスクロール後の資源）も同じ仕組みで計測する。
 方針・テスト一覧・合否基準・ベースラインは [docs/14_e2e_test.md](../docs/14_e2e_test.md) を参照。
 
-perf/ と同じく **任意のタイミングで手動実行する**。quality-check スキルの必須項目ではない。CI（`.github/workflows/e2e.yml`）では PR ごとにシナリオだけを実行し、性能計測は手動のみ。
+perf/ と同じく **任意のタイミングで手動実行する**。quality-check スキルの必須項目ではない。CI（`.github/workflows/e2e.yml`）では PR ごと・main への push ごとにシナリオだけを実行し、性能計測は手動のみ。テストコード自体の Lint / 型チェック（`npm run check`、Docker 不要）は `.github/workflows/quality-check.yml` の `e2e-static` ジョブが実行する。
 
 ## 必要なもの
 
@@ -37,6 +37,8 @@ bash e2e/run.sh down             # 4. backend を開発用に戻し、テスト�
 | `reset` | e2e 用 DB のテーブルとバケットを空にする（`run` が毎回自動で行う。`E2E_KEEP_DATA=1` で省略） |
 | `down [--keep-data]` | backend を開発用に戻してから e2e 用 DB とバケットを削除。`--keep-data` で残す |
 | `clean-results` | `e2e/results/` を空にする |
+
+テストコード（`e2e/**/*.ts`）を変えたら `cd e2e && npm run check`（Oxlint → tsc）を通すこと。Docker も backend も要らない。
 
 ```bash
 # 1 ファイル・1 ケースだけ流す（引数は playwright test にそのまま渡る）

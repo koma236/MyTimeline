@@ -97,14 +97,18 @@ React + Spring Boot プロジェクトの全体的なコード品質チェック
 ### 対象外: E2E テスト（Playwright）と k6
 
 `e2e/`（ブラウザからの機能横断テストとブラウザ性能の計測）と `perf/`（k6）は Docker と隔離 DB を使うため、
-このスキルの必須項目ではない。E2E のシナリオは CI（`.github/workflows/e2e.yml`）が PR ごとに実行する。
+このスキルの必須項目ではない。E2E のシナリオは CI（`.github/workflows/e2e.yml`）が PR ごと・main への push ごとに実行する。
+ただし E2E テストコード自体の Lint / 型チェック（`cd e2e && npm run check`）は Docker 不要なので、
+`e2e/` を変更したときは必ず通すこと（CI では `quality-check.yml` の `e2e-static` ジョブが実行する）。
 画面の文言・aria-label・ルーティングを変えたときは `bash e2e/run.sh up && bash e2e/run.sh run scenario` で
 手元でも確認すること（手順は `e2e/README.md`）。
 
 ### CI との対応
 
-`.github/workflows/quality-check.yml` が PR ごとに上記のフロントエンド 1〜4 とバックエンド 1〜3 を実行し、
-テスト結果とカバレッジをアーティファクトに保存する。手元でこのスキルを通していれば CI も通る。
+`.github/workflows/quality-check.yml` が PR ごと・main への push ごとに上記のフロントエンド 1〜4 とバックエンド 1〜3、
+および `e2e/` の Lint / 型チェック（`e2e-static` ジョブ）を実行し、テスト結果とカバレッジをアーティファクトに保存する。
+各ジョブは main の必須ステータスチェックに登録してあるため、落ちた PR はマージできない。
+手元でこのスキルを通していれば CI も通る。
 
 ## 完了条件
 
