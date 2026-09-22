@@ -1,7 +1,7 @@
 // アクセシビリティ検査（axe-core）。SCR-01〜07 の 7 画面を代表的な状態で検査し、
 // impact が serious / critical の違反が無いことを確かめる。
 // 検査結果の全文はレポートに添付する（moderate 以下の指摘を拾う材料）。
-import AxeBuilder from '@axe-core/playwright'
+import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test } from '../../fixtures/test'
 import { detailLink, postCard } from '../../fixtures/helpers'
 import type { Page, TestInfo } from '@playwright/test'

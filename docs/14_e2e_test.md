@@ -10,7 +10,7 @@
 | API 負荷（[13_performance_test.md](13_performance_test.md)） | サーバーが負荷に耐えるか | k6 |
 | **E2E（本書）** | **画面 → API → DB を通して、ユースケースどおりに機能が繋がって動くか。ブラウザ側の性能** | Playwright |
 
-- シナリオ・耐性・アクセシビリティは **PR ごとに CI で実行する**（`.github/workflows/e2e.yml`。約 5 分）。手元では任意のタイミングで実行し、quality-check スキルの必須項目にはしない（Docker と隔離 DB が要る）
+- シナリオ・耐性・アクセシビリティは **PR ごと・main への push ごとに CI で実行する**（`.github/workflows/e2e.yml`。約 5 分。main の必須ステータスチェック）。テストコード自体の Lint / 型チェックは `quality-check.yml` の `e2e-static` ジョブが行う。手元では任意のタイミングで実行し、quality-check スキルの必須項目にはしない（Docker と隔離 DB が要る）
 - ブラウザ性能の計測は **手動のみ**。共有ランナーの数値は安定せず、合否を自動判定しても信用できない
 
 ### 16.2 ツール

@@ -145,11 +145,25 @@ cd backend && ./gradlew build
 cd frontend && npm run check
 ```
 
-ブラウザから画面を操作する E2E テスト（Playwright）は Docker と隔離 DB を使うため、コミット前の必須にはせず任意のタイミングで実行する（[e2e/README.md](e2e/README.md)）。CI では PR ごとにシナリオだけを実行し、ブラウザ性能の計測は手動のみ。
+ブラウザから画面を操作する E2E テスト（Playwright）は Docker と隔離 DB を使うため、コミット前の必須にはせず任意のタイミングで実行する（[e2e/README.md](e2e/README.md)）。E2E テストコード自体の Lint / 型チェック（`cd e2e && npm run check`）は Docker 不要なので、`e2e/` を触ったらコミット前に通すこと。CI では PR ごと・main への push ごとにシナリオだけを実行し、ブラウザ性能の計測は手動のみ。
 
 ```bash
 bash e2e/run.sh up && bash e2e/run.sh run scenario && bash e2e/run.sh down
 ```
+
+### CI（GitHub Actions）
+
+上記の品質チェックは PR ごと・`main` への push ごとに `.github/workflows/` の 3 ワークフローが自動実行する（Actions タブの Run workflow で手動実行もできる）。パフォーマンステスト（k6・Playwright perf）は CI では実行しない。
+
+| ワークフロー | ジョブ | 内容 |
+|---|---|---|
+| Quality check | `backend` | `./gradlew build`（単体・Mapper・結合テスト + Checkstyle + SpotBugs + JaCoCo） |
+| | `frontend` | Oxlint + tsc + Vitest（カバレッジ付き） |
+| | `e2e-static` | E2E テストコードの Oxlint + tsc |
+| E2E test | `scenario` | Playwright のシナリオ・耐性・アクセシビリティ |
+| OpenAPI spec check | `openapi-json` / `frontend-types` | 仕様書と生成型のドリフト検知 |
+
+この 6 ジョブは `main` のブランチ保護で **必須ステータスチェック** に登録してあり、1 つでも失敗した PR はマージできない。管理者にも適用（enforce_admins）を有効にしているので、リポジトリの所有者でも迂回できない。ジョブ id を変えたときは GitHub の Settings → Branches で必須チェックの名前も更新すること。
 
 ---
 

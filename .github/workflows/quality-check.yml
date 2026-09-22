@@ -1,16 +1,27 @@
-# PR ごとにテスト・Lint・静的解析をまとめて実行する（.claude/skills/quality-check の CI 版）。
+# PR ごと・main への push ごとにテスト・Lint・静的解析をまとめて実行する（.claude/skills/quality-check の CI 版）。
 #
 # backend ジョブ: ./gradlew build で全テスト（Mapper / 結合テストは H2 を使うため Docker 不要）
 # + Checkstyle + SpotBugs + JaCoCo を実行する。
 # frontend ジョブ: npm run check（Oxlint → tsc → Vitest）を実行し、カバレッジも計測する。
+# e2e-static ジョブ: E2E テストコード（e2e/**/*.ts）の Oxlint と tsc。ブラウザは動かさない
+# （シナリオの実行は e2e.yml）。
 #
 # どちらもカバレッジは閾値で落とさない。レポートはアーティファクトとして保存するので、
 # 未到達の分岐を探してテストを足す材料に使うこと。
+# 各ジョブは main のブランチ保護で必須ステータスチェックに登録している（ジョブ id を変えたら設定も更新すること）。
 name: Quality check
 
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# 同じ PR への連続 push では古い実行を止める。main への push は最後まで走らせる
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   backend:
@@ -72,3 +83,22 @@ jobs:
           name: frontend-coverage
           path: frontend/coverage
           if-no-files-found: ignore
+
+  e2e-static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
+      - name: 依存関係をインストールする
+        working-directory: e2e
+        run: npm ci
+
+      - name: Oxlint・tsc を実行する
+        working-directory: e2e
+        run: npm run lint && npm run typecheck
