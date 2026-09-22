@@ -27,7 +27,7 @@ X（旧 Twitter）風のタイムライン型 SNS アプリ。テキストと画
 
 | レイヤー | 主な技術 |
 |---------|---------|
-| フロントエンド | React 19 + TypeScript 6 + Vite 8 + Tailwind CSS 3 + Axios（Lint: Oxlint / テスト: Vitest + React Testing Library） |
+| フロントエンド | React 19 + TypeScript 6 + Vite 8 + Tailwind CSS 3 + Axios（Lint: Oxlint / テスト: Vitest + React Testing Library / E2E: Playwright） |
 | バックエンド | Java 25 + Spring Boot 4.0 + MyBatis + Flyway + Spring Security（JWT 認証）（静的解析: Checkstyle + SpotBugs） |
 | データベース | PostgreSQL 15（ローカル）/ PostgreSQL 16（RDS, 本番想定） |
 | 画像ストレージ | AWS S3（ローカルは S3 互換の MinIO） |
@@ -71,6 +71,7 @@ MyTimeline/
 │       └── utils/            # 表示用の小さなユーティリティ（相対時刻など）
 ├── docs/                     # 設計ドキュメント（要件定義・機能定義書）
 ├── perf/                     # パフォーマンステスト（k6。任意のタイミングで手動実行）
+├── e2e/                      # E2E テスト（Playwright。シナリオ・耐性・アクセシビリティ・ブラウザ性能）
 ├── docker-compose.yml        # PostgreSQL + MinIO + Backend
 └── .claude/                  # Claude Code 用スキル・権限設定
 ```
@@ -142,6 +143,12 @@ cd backend && ./gradlew build
 
 # フロントエンド: Oxlint + 型チェック（tsc）+ テスト（Vitest）
 cd frontend && npm run check
+```
+
+ブラウザから画面を操作する E2E テスト（Playwright）は Docker と隔離 DB を使うため、コミット前の必須にはせず任意のタイミングで実行する（[e2e/README.md](e2e/README.md)）。CI では PR ごとにシナリオだけを実行し、ブラウザ性能の計測は手動のみ。
+
+```bash
+bash e2e/run.sh up && bash e2e/run.sh run scenario && bash e2e/run.sh down
 ```
 
 ---
@@ -331,6 +338,7 @@ curl -s -H "Authorization: Bearer <accessToken>" http://localhost:8080/actuator/
 | [docs/11_monitoring_design.md](docs/11_monitoring_design.md) | 監視運用設計（監視項目・閾値・通知） |
 | [docs/12_incident_response.md](docs/12_incident_response.md) | 障害対応運用フロー（重大度・Runbook・ポストモーテム） |
 | [docs/13_performance_test.md](docs/13_performance_test.md) | パフォーマンステスト（方針・合否基準・テスト種別・ベースライン記録）。実行手順は [perf/README.md](perf/README.md) |
+| [docs/14_e2e_test.md](docs/14_e2e_test.md) | E2E テスト（Playwright。ツール選定・シナリオ一覧・ブラウザ性能の基準とベースライン記録）。実行手順は [e2e/README.md](e2e/README.md) |
 
 ### 機能定義書（機能単位の詳細）
 
