@@ -1,0 +1,20 @@
+{
+  "name": "mytimeline-e2e",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "MyTimeline の E2E テスト（Playwright）とブラウザパフォーマンステスト。実行手順は README.md",
+  "scripts": {
+    "test": "playwright test",
+    "test:scenario": "playwright test -c playwright.config.ts",
+    "test:perf": "playwright test -c playwright.perf.config.ts",
+    "report": "playwright show-report",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^24.13.2",
+    "typescript": "~6.0.2"
+  }
+}

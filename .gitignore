@@ -34,3 +34,10 @@ perf/results/*
 
 # 実サイズの画像でアップロードを測りたいときに置く任意のファイル（perf/README.md）
 perf/k6/assets/
+
+# E2E テスト（Playwright）。結果とレポートは実行のたびに増える。比較用の数値は docs/14 に転記する
+e2e/node_modules/
+e2e/test-results/
+e2e/playwright-report/
+e2e/results/*
+!e2e/results/.gitkeep

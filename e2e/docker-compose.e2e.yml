@@ -1,0 +1,13 @@
+# E2E テスト用の上書きファイル。単体では使わず、必ず docker-compose.yml に重ねる。
+#   docker compose -f docker-compose.yml -f e2e/docker-compose.e2e.yml ...
+# 直接叩かず bash e2e/run.sh を使うこと（e2e 用 DB の作成や後片付けまで面倒を見る）。
+#
+# perf/docker-compose.perf.yml と違い CPU・メモリの上限や JVM 設定は変えない。
+# ここで測るのはブラウザ側の時間で、サーバーは「開発時と同じ条件」で動いていればよい。
+services:
+  backend:
+    environment:
+      # 開発データを汚さないよう、同じ Postgres コンテナ内の別データベースを使う
+      DB_NAME: mytimeline_e2e
+      # 画像つき投稿・アバターのアップロード先も開発用バケットと分ける
+      S3_BUCKET: mytimeline-images-e2e
