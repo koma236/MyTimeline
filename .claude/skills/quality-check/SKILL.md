@@ -94,6 +94,13 @@ React + Spring Boot プロジェクトの全体的なコード品質チェック
 - ER 図: テーブル名・カラム定義が `backend/src/main/resources/db/migration/` の SQL と一致しているか
 - `requirements.md` / `docs/`: 技術スタックのバージョンが実装と一致しているか
 
+### 対象外: E2E テスト（Playwright）と k6
+
+`e2e/`（ブラウザからの機能横断テストとブラウザ性能の計測）と `perf/`（k6）は Docker と隔離 DB を使うため、
+このスキルの必須項目ではない。E2E のシナリオは CI（`.github/workflows/e2e.yml`）が PR ごとに実行する。
+画面の文言・aria-label・ルーティングを変えたときは `bash e2e/run.sh up && bash e2e/run.sh run scenario` で
+手元でも確認すること（手順は `e2e/README.md`）。
+
 ### CI との対応
 
 `.github/workflows/quality-check.yml` が PR ごとに上記のフロントエンド 1〜4 とバックエンド 1〜3 を実行し、

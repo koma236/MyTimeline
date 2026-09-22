@@ -1,0 +1,56 @@
+# PR ごとに E2E テスト（Playwright）のシナリオ・耐性・アクセシビリティを実行する。
+#
+# backend は docker compose で e2e 用 DB（mytimeline_e2e）を向けて起動し（e2e/run.sh up）、
+# フロントは Playwright が本番ビルド + vite preview を自動起動する。
+# ブラウザ性能の計測（run perf）は共有ランナーでは数値が安定しないため CI では実行しない。
+# 落ちたら Playwright のレポート（アーティファクト playwright-report）でトレースを見ること。
+# 手元での再現は e2e/README.md。
+name: E2E test
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  scenario:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            e2e/package-lock.json
+
+      - name: .env を用意する（既定値のままで動く）
+        run: cp .env.example .env
+
+      - name: backend を e2e 用 DB で起動する（Docker 内で Gradle ビルド）
+        run: bash e2e/run.sh up
+
+      - name: 依存関係をインストールする
+        run: |
+          (cd frontend && npm ci)
+          (cd e2e && npm ci && npx playwright install --with-deps chromium)
+
+      - name: シナリオ・耐性・アクセシビリティを実行する
+        run: bash e2e/run.sh run scenario
+
+      - name: backend のログを出す（失敗時）
+        if: failure()
+        run: docker compose logs --tail 200 backend
+
+      - name: Playwright のレポートを保存する
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+          if-no-files-found: ignore
+          retention-days: 14
